@@ -2,6 +2,7 @@ from flask import (Blueprint, escape, flash, render_template,
                    redirect, request, url_for)
 from flask_login import current_user, login_required, login_user, logout_user
 from datetime import datetime
+from sqlalchemy import func
 from .forms import ResetPasswordForm, EmailForm, LoginForm, RegistrationForm,EditUserForm,username_is_available,email_is_available
 from ..data.database import db
 from ..data.models import User, UserPasswordToken,Card
@@ -129,7 +130,9 @@ def account():
 @blueprint.route('/vypisy', methods=['GET'])
 @login_required
 def vypisy():
-    
+
     #form=Card.find_by_number(current_user.card_number)
-    form = db.session.query(datetime(Card.time).format('YYYY-MM')).filter_by(card_number=current_user.card_number)
+    #form = db.session.query(Card.time).filter_by(card_number=current_user.card_number)
+    form = db.session.query( func.max(Card.time).label("time")).filter_by(card_number=current_user.card_number)
+        #.group_by([func.day(Card.time)])
     return render_template("auth/vypisy.tmpl", form=form)
