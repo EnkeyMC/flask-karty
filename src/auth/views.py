@@ -1,8 +1,9 @@
 from flask import (Blueprint, escape, flash, render_template,
                    redirect, request, url_for)
 from flask_login import current_user, login_required, login_user, logout_user
-from datetime import datetime
-from sqlalchemy import func
+
+from sqlalchemy import func,asc
+from sqlalchemy.types import DateTime
 from .forms import ResetPasswordForm, EmailForm, LoginForm, RegistrationForm,EditUserForm,username_is_available,email_is_available
 from ..data.database import db
 from ..data.models import User, UserPasswordToken,Card
@@ -133,6 +134,17 @@ def vypisy():
 
     #form=Card.find_by_number(current_user.card_number)
     #form = db.session.query(Card.time).filter_by(card_number=current_user.card_number)
-    form = db.session.query( func.max(Card.time).label("time")).filter_by(card_number=current_user.card_number)
+    form = db.session.query( func.strftime('%Y-%m', Card.time).label("time")).filter_by(card_number=current_user.card_number).group_by(func.strftime('%Y-%m', Card.time))
         #.group_by([func.day(Card.time)])
     return render_template("auth/vypisy.tmpl", form=form)
+@blueprint.route('/mesicni_vypis/<string:mesic>', methods=['GET'])
+@login_required
+def mesicni_vypis(mesic):
+
+    #form=Card.find_by_number(current_user.card_number)
+    #form = db.session.query(Card.time).filter_by(card_number=current_user.card_number)
+    form = db.session.query( func.strftime('%Y-%m-%d', Card.time).label("date"),func.max(func.strftime('%H:%M', Card.time)).label("Max"),\
+                             func.min(func.strftime('%H:%M', Card.time)).label("Min"),( func.max(Card.time) - func.min(Card.time)).label("Rozdil"))\
+        .filter((func.strftime('%Y-%m', Card.time) == mesic) and (Card.card_number == current_user.card_number)).group_by(func.strftime('%Y-%m-%d', Card.time))
+        #.group_by([func.day(Card.time)])
+    return render_template("auth/mesicni_vypisy.tmpl", form=form)
