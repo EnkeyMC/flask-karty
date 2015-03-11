@@ -8,3 +8,6 @@ blueprint = Blueprint('public', __name__)
 @blueprint.route('/', methods=['GET'])
 def index():
     return render_template('public/index.tmpl')
+
+
+

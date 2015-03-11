@@ -1,5 +1,5 @@
 from flask import (Blueprint, escape, flash, render_template,
-                   redirect, request, url_for)
+                   redirect, request, url_for,jsonify)
 from flask_login import current_user, login_required, login_user, logout_user
 
 from sqlalchemy import func,asc
@@ -148,3 +148,32 @@ def mesicni_vypis(mesic):
         .filter((func.strftime('%Y-%m', Card.time) == mesic) and (Card.card_number == current_user.card_number)).group_by(func.strftime('%Y-%m-%d', Card.time))
         #.group_by([func.day(Card.time)])
     return render_template("auth/mesicni_vypisy.tmpl", form=form)
+
+
+from collections import OrderedDict
+class DictSerializable(object):
+    def _asdict(self):
+        result = OrderedDict()
+        for key in self.__mapper__.c.keys():
+            result[key] = getattr(self, key)
+        return result
+
+@blueprint.route('/tbl_isdata/<int:od>/<int:do>', methods=['GET'])
+@login_required
+def tbl_insdata(od , do ):
+    #data = db.session.query( func.strftime('%Y-%m', Card.time).label("time")).filter_by(card_number=current_user.card_number).group_by(func.strftime('%Y-%m', Card.time))
+    if od==0 and do == 0 :
+        data=db.session.query(Card.id,Card.card_number,func.strftime('%Y-%m', Card.time).label("time")).all()
+    else:
+        data=db.session.query(Card.id,Card.card_number,func.strftime('%Y-%m', Card.time).label("time")).slice(od,do)
+    pole=['id','time','card_number']
+    result = [{col: getattr(d, col) for col in pole} for d in data]
+    return jsonify(data = result)
+
+
+
+
+@blueprint.route('/tabletest', methods=['GET'])
+@login_required
+def tabletest():
+    return render_template('public/table.tmpl')

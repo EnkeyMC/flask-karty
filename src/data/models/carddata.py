@@ -5,6 +5,7 @@ from ..mixins import CRUDModel
 
 class Card(CRUDModel):
     __tablename__ = 'carddata'
+    __public__ = ['id', 'card_number', 'time']
 
     id = Column(Integer, primary_key=True)
     card_number = Column(String(32),  index=True, doc="Card access number")
@@ -16,6 +17,7 @@ class Card(CRUDModel):
     def __init__(self, **kwargs):
         for k, v in kwargs.iteritems():
             setattr(self, k, v)
+
     @staticmethod
     def find_by_number(card_number):
         return db.session.query(Card).filter_by(card_number=card_number).scalar()
