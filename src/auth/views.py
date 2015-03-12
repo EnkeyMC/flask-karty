@@ -11,6 +11,22 @@ from ..data.util import generate_random_token
 from ..decorators import reset_token_required
 from ..emails import send_activation, send_password_reset
 from ..extensions import login_manager
+import simplejson as json
+from collections import namedtuple
+from datetime import datetime
+
+def last_day_of_month(year, month):
+        """ Work out the last day of the month """
+        last_days = [31, 30, 29, 28, 27]
+        for i in last_days:
+                try:
+                        end = datetime(year, month, i)
+                except ValueError:
+                        continue
+                else:
+                        return end.day
+        return None
+
 
 blueprint = Blueprint('auth', __name__)
 
@@ -177,3 +193,28 @@ def tbl_insdata(od , do ):
 @login_required
 def tabletest():
     return render_template('public/table.tmpl')
+
+@blueprint.route('/calendar/<int:card_number>/<int:year>/<int:mount>', methods=['GET'])
+@login_required
+def calendar_edit(card_number,year,mount):
+    lastday = last_day_of_month(year , mount)
+    data=[]
+    startdate='8:00'
+    enddate='16:00'
+    for day in xrange(1,lastday):
+        d = {}
+        d['card_number']=card_number
+        d['day']=day
+        d['startdate']=startdate
+        d['enddate']=enddate
+        data.append(d)
+    #print json.dumps(data, separators=(',',':'))
+
+    #pole=['card_number','day','startdate','enddate']
+    #result = [{col: d[col] for col in pole} for d in data]
+    #print jsonify(data=result)
+
+
+
+    #return render_template('auth/calendar.tmpl')
+    return jsonify(data=data)
