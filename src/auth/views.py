@@ -12,7 +12,7 @@ from ..emails import send_activation, send_password_reset
 from ..extensions import login_manager
 import simplejson as json
 from collections import namedtuple
-from datetime import datetime
+from datetime import datetime,timedelta
 
 def last_day_of_month(year, month):
         """ Work out the last day of the month """
@@ -236,8 +236,14 @@ def calendar(card_number,year,mounth):
             d['startdate']=''
             d['enddate']=''
         else:
-            hodnota = db.session.query( func.min(func.strftime('%H:%M', Card.time)).label("Min")).filter((func.strftime('%Y-%m-%d', Card.time) == str(year)+ '-' + str(mounth) +'-' + str(day)) and (Card.card_number == card_number))
+            fromdate=datetime(year, mounth, day)
+            todate=datetime(year, mounth, day) + timedelta(days=1)
+
+            hodnota = db.session.query( func.min(func.strftime('%H:%M', Card.time)).label("Min")).filter(Card.time >= fromdate).filter(Card.time < todate).filter(Card.card_number == card_number)
                            #.group_by(func.strftime('%Y-%m-%d', Card.time)))
+#            if len(hodnota) > 0 :
+ #               print len(hodnota)
+
             d['startdate']=startdate
             d['enddate']=enddate
             rozdil=datetime.strptime(enddate,"%H:%M")-datetime.strptime(startdate,"%H:%M")
