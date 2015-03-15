@@ -2,6 +2,7 @@ import re
 
 from flask_wtf import Form
 from wtforms.fields import BooleanField, TextField, PasswordField
+from wtforms_components  import TimeField
 from wtforms.validators import EqualTo, Email, InputRequired, Length
 
 from ..data.models import User
@@ -94,3 +95,11 @@ class EditUserForm(Form):
         Predicate(isnumeric, message="Pleas only number value is possible"),
         InputRequired(message="You can't leave this empty")
     ])
+
+class Editdate(Form):
+    #startdate = TimeField('Datum prichodu')
+    enddate = TimeField('Datum odchodu')
+    startdate = TextField('Datum prichodu')
+    #enddate = TextField('Datum odchodu')
+
+

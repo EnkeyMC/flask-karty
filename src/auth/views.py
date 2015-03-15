@@ -1,10 +1,9 @@
 from flask import (Blueprint, escape, flash, render_template,
                    redirect, request, url_for,jsonify)
 from flask_login import current_user, login_required, login_user, logout_user
-
 from sqlalchemy import func,asc
 from sqlalchemy.types import DateTime
-from .forms import ResetPasswordForm, EmailForm, LoginForm, RegistrationForm,EditUserForm,username_is_available,email_is_available
+from .forms import ResetPasswordForm, EmailForm, LoginForm, RegistrationForm,EditUserForm,username_is_available,email_is_available,Editdate
 from ..data.database import db
 from ..data.models import User, UserPasswordToken,Card
 from ..data.util import generate_random_token
@@ -194,9 +193,9 @@ def tbl_insdata(od , do ):
 def tabletest():
     return render_template('public/table.tmpl')
 
-@blueprint.route('/calendar/<int:card_number>/<int:year>/<int:mount>', methods=['GET'])
+@blueprint.route('/caljsonr/<int:card_number>/<int:year>/<int:mount>', methods=['GET'])
 @login_required
-def calendar_edit(card_number,year,mount):
+def caljson_edit(card_number,year,mount):
     lastday = last_day_of_month(year , mount)
     data=[]
     startdate='8:00'
@@ -218,3 +217,53 @@ def calendar_edit(card_number,year,mount):
 
     #return render_template('auth/calendar.tmpl')
     return jsonify(data=data)
+
+@blueprint.route('/calendar/<int:card_number>/<int:year>/<int:mounth>', methods=['GET'])
+@login_required
+def calendar(card_number,year,mounth):
+    lastday = last_day_of_month(year , mounth)
+
+    datarow=[]
+    data={}
+    startdate='8:00'
+    enddate='16:00'
+    data['stravenka']=0
+    for day in xrange(1,lastday):
+        d = {}
+        d['day']=day
+        d['dow']= datetime(year, mounth, day).weekday()
+        if d['dow'] > 4:
+            d['startdate']=''
+            d['enddate']=''
+        else:
+            hodnota = db.session.query( func.min(func.strftime('%H:%M', Card.time)).label("Min")).filter((func.strftime('%Y-%m-%d', Card.time) == str(year)+ '-' + str(mounth) +'-' + str(day)) and (Card.card_number == card_number))
+                           #.group_by(func.strftime('%Y-%m-%d', Card.time)))
+            d['startdate']=startdate
+            d['enddate']=enddate
+            rozdil=datetime.strptime(enddate,"%H:%M")-datetime.strptime(startdate,"%H:%M")
+            d['timespend']=rozdil.total_seconds() / 3600
+            if d['timespend'] >= 3:
+                data['stravenka'] = data['stravenka'] + 1
+
+        datarow.append(d)
+    data['user']=current_user.email
+    data['mounth']=mounth
+    data['year']=year
+    data['card_number']=card_number
+    data['data']=datarow
+
+
+    return render_template('auth/mesicni_vypis.tmpl',data=data)
+
+@blueprint.route('/calendar_edit/<int:card_number>/<int:year>/<int:mounth>/<int:day>', methods=['GET','POST'])
+@login_required
+def calendar_edit(card_number,year,mounth,day):
+    form = Editdate()
+    form.den = str(day)  + '-' +  str(mounth)  +  '-' + str(year)
+    form.card_number = str (card_number)
+    if form.validate_on_submit():
+        enddate=str(form.data['enddate'])
+        flash("Saved successfully", "info")
+        return redirect('calendar/'+str (card_number)+'/'+str(mounth)+'/'+str(day))
+    return render_template('auth/editdate.tmpl', form=form)
+
