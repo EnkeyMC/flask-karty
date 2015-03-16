@@ -1,7 +1,7 @@
 from flask import (Blueprint, escape, flash, render_template,
                    redirect, request, url_for,jsonify)
 from flask_login import current_user, login_required, login_user, logout_user
-from sqlalchemy import func,asc
+from sqlalchemy import func,asc,Date,cast,extract
 from sqlalchemy.types import DateTime
 from .forms import ResetPasswordForm, EmailForm, LoginForm, RegistrationForm,EditUserForm,username_is_available,email_is_available,Editdate
 from ..data.database import db
@@ -149,9 +149,11 @@ def vypisy():
 
     #form=Card.find_by_number(current_user.card_number)
     #form = db.session.query(Card.time).filter_by(card_number=current_user.card_number)
-    form = db.session.query( func.strftime('%Y-%m', Card.time).label("time")).filter_by(card_number=current_user.card_number).group_by(func.strftime('%Y-%m', Card.time))
+    form = db.session.query( func.strftime('%Y-%m', Card.time).label("time"),func.strftime('%Y', Card.time).label("year"),func.strftime('%m', Card.time).label("month")).filter_by(card_number=current_user.card_number).group_by(func.strftime('%Y-%m', Card.time))
         #.group_by([func.day(Card.time)])
-    return render_template("auth/vypisy.tmpl", form=form)
+
+    return render_template("auth/vypisy.tmpl", form=form, data=current_user.card_number)
+
 @blueprint.route('/mesicni_vypis/<string:mesic>', methods=['GET'])
 @login_required
 def mesicni_vypis(mesic):
@@ -160,7 +162,7 @@ def mesicni_vypis(mesic):
     #form = db.session.query(Card.time).filter_by(card_number=current_user.card_number)
     form = db.session.query( func.strftime('%Y-%m-%d', Card.time).label("date"),func.max(func.strftime('%H:%M', Card.time)).label("Max"),\
                              func.min(func.strftime('%H:%M', Card.time)).label("Min"),( func.max(Card.time) - func.min(Card.time)).label("Rozdil"))\
-        .filter((func.strftime('%Y-%m', Card.time) == mesic) and (Card.card_number == current_user.card_number)).group_by(func.strftime('%Y-%m-%d', Card.time))
+        .filter((func.strftime('%Y-%-m', Card.time) == mesic) and (Card.card_number == current_user.card_number)).group_by(func.strftime('%Y-%m-%d', Card.time))
         #.group_by([func.day(Card.time)])
     return render_template("auth/mesicni_vypisy.tmpl", form=form)
 
@@ -225,13 +227,28 @@ def calendar(card_number,year,mounth):
 
     datarow=[]
     data={}
-    startdate='8:00'
-    enddate='16:00'
+    startdate='0:00'
+    enddate='0:00'
     data['stravenka']=0
+    #hodnota = list(db.session.query( func.strftime('%d', Card.time).label("den"),func.max(func.strftime('%H:%M', Card.time)).label("Max"),\
+    #                         func.min(func.strftime('%H:%M', Card.time)).label("Min"))\
+    #                        .filter(func.date(Card.time) == fromdate.date()).filter(Card.card_number == card_number).group_by(func.date(Card.time)))
+    ff= datetime(year, mounth, 1).strftime('%Y-%-m')
+    #hodnota = list(db.session.query( func.strftime('%d', Card.time).label("den"),func.max(func.strftime('%H:%M', Card.time)).label("Max"),\
+     #                        func.min(func.strftime('%H:%M', Card.time)).label("Min"))\
+      #                   .filter(Card.card_number == card_number).group_by(func.strftime('%Y-%m-%d', Card.time)))
+
+
+    hodnota = list(db.session.query( extract('day', Card.time).label("den")\
+                        ,func.min(func.strftime('%H:%M', Card.time)).label("Min")\
+                        ,func.max(func.strftime('%H:%M', Card.time)).label("Max"))\
+                        .filter(extract('month', Card.time) == mounth  ) .filter(extract('year', Card.time) == year  ).filter(Card.card_number==card_number).group_by(func.strftime('%Y-%m-%d', Card.time)))
+            #.filter(datetime(Card.time).month == mounth  ))
     for day in xrange(1,lastday):
         d = {}
         d['day']=day
         d['dow']= datetime(year, mounth, day).weekday()
+        datafromdb=filter(lambda x: x[0] == day, hodnota)
         if d['dow'] > 4:
             d['startdate']=''
             d['enddate']=''
@@ -239,15 +256,23 @@ def calendar(card_number,year,mounth):
             fromdate=datetime(year, mounth, day)
             todate=datetime(year, mounth, day) + timedelta(days=1)
 
-            hodnota = db.session.query( func.min(func.strftime('%H:%M', Card.time)).label("Min")).filter(Card.time >= fromdate).filter(Card.time < todate).filter(Card.card_number == card_number)
+            #hodnota = db.session.query( func.min(func.strftime('%H:%M', Card.time)).label("Min")).filter(Card.time >= fromdate).filter(Card.time < todate).filter(Card.card_number == card_number)
+            #hodnota = list(db.session.query(func.date(Card.time).label('xxx')).filter(func.date(Card.time) == fromdate.date() ).filter(Card.card_number == card_number).all())
+            #.filter(cast(Card.time,Date) == fromdate.date())
+            #hodnota = list(db.session.query( func.strftime('%d', Card.time).label("den"),func.max(func.strftime('%H:%M', Card.time)).label("Max"),\
+             #                func.min(func.strftime('%H:%M', Card.time)).label("Min"))\
+             #               .filter(func.date(Card.time) == fromdate.date()).filter(Card.card_number == card_number).group_by(func.date(Card.time)))
                            #.group_by(func.strftime('%Y-%m-%d', Card.time)))
 #            if len(hodnota) > 0 :
  #               print len(hodnota)
 
             d['startdate']=startdate
             d['enddate']=enddate
-            rozdil=datetime.strptime(enddate,"%H:%M")-datetime.strptime(startdate,"%H:%M")
-            d['timespend']=rozdil.total_seconds() / 3600
+            if datafromdb :
+                d['startdate']=datafromdb[0][1]
+                d['enddate']=datafromdb[0][2]
+            rozdil=datetime.strptime(d['enddate'],"%H:%M")-datetime.strptime(d['startdate'],"%H:%M")
+            d['timespend']=round(rozdil.total_seconds() / 3600,2)
             if d['timespend'] >= 3:
                 data['stravenka'] = data['stravenka'] + 1
 
@@ -268,8 +293,19 @@ def calendar_edit(card_number,year,mounth,day):
     form.den = str(day)  + '-' +  str(mounth)  +  '-' + str(year)
     form.card_number = str (card_number)
     if form.validate_on_submit():
-        enddate=str(form.data['enddate'])
+        delday=db.session.query(Card).filter(extract('month', Card.time) == mounth  ) .filter(extract('year', Card.time) == year  ).filter(extract('day', Card.time) == day  ).filter(Card.card_number==card_number)
+        for item in delday:
+            db.session.delete(item)
+        time1=str(day)  + '-' +  str(mounth)  +  '-' + str(year)+' '+ str(form.data['startdate'])
+        cas= datetime.strptime(time1, "%d-%m-%Y %H:%M:%S")
+        i=Card(card_number=card_number,time=cas)
+        db.session.add(i)
+        time1=str(day)  + '-' +  str(mounth)  +  '-' + str(year)+' '+ str(form.data['enddate'])
+        cas= datetime.strptime(time1, "%d-%m-%Y %H:%M:%S")
+        i=Card(card_number=card_number,time=cas)
+        db.session.add(i)
+        db.session.commit()
         flash("Saved successfully", "info")
-        return redirect('calendar/'+str (card_number)+'/'+str(mounth)+'/'+str(day))
+        return redirect('calendar/'+str (card_number)+'/'+str(year)+'/'+str(mounth))
     return render_template('auth/editdate.tmpl', form=form)
 

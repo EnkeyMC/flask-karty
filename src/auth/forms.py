@@ -99,7 +99,7 @@ class EditUserForm(Form):
 class Editdate(Form):
     #startdate = TimeField('Datum prichodu')
     enddate = TimeField('Datum odchodu')
-    startdate = TextField('Datum prichodu')
+    startdate = TimeField('Datum prichodu')
     #enddate = TextField('Datum odchodu')
 
 

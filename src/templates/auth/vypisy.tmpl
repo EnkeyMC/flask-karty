@@ -15,7 +15,7 @@
 <tr><td>Device name</td><td>Hash</td></tr>
 {% for mesic in form %}
         <tr>
-            <td><a href=/mesicni_vypis/{{mesic.time}}>{{mesic.time}}</a></td>
+            <td><a href=/calendar/{{data}}/{{mesic.year}}/{{mesic.month}}>{{mesic.time}}</a></td>
         </tr>
     {% endfor %}
     <table>
