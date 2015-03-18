@@ -18,6 +18,8 @@ class User(CRUDModel, UserMixin):
     username = Column(String(64), nullable=False, unique=True, index=True, doc="The user's username.")
     verified = Column(Boolean(name="verified"), nullable=False, default=False)
     card_number = Column(String(32), unique=True, index=True, doc="Card access number")
+    full_name=Column(String(40), unique=False, index=True, doc="Full name")
+    access=Column(String(1), index=True, doc="Access")
 
     # Use custom constructor
     # pylint: disable=W0231

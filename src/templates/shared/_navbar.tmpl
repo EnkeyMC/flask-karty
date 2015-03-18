@@ -19,9 +19,12 @@
           <li><a href="{{ url_for('auth.login') }}">Login</a></li>
           <li><a href="{{ url_for('auth.register') }}">Sign up</a></li>
         {% else %}
-          <li><a href="{{ url_for('auth.vypisy') }}">List by mounth</a></li>
-          <li><a href="{{ url_for('auth.account') }}">Account</a></li>
-          <li><a href="{{ url_for('auth.logout') }}">Logout</a></li>
+          {% if current_user.access == "A" or current_user.access == "B" %}
+              <li><a href="{{ url_for('auth.user_list') }}">List uživatelů</a></li>
+          {% endif %}
+          <li><a href="{{ url_for('auth.vypisy') }}">List po měsících</a></li>
+          <li><a href="{{ url_for('auth.account') }}">Účet</a></li>
+          <li><a href="{{ url_for('auth.logout') }}">Odhlášení</a></li>
 
         {% endif %}
       </ul>

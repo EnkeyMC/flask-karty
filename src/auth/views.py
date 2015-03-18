@@ -309,3 +309,57 @@ def calendar_edit(card_number,year,mounth,day):
         return redirect('calendar/'+str (card_number)+'/'+str(year)+'/'+str(mounth))
     return render_template('auth/editdate.tmpl', form=form)
 
+@blueprint.route('/user_list', methods=['GET'])
+@login_required
+def user_list():
+    if current_user.email== "admin@iservery.com":
+        data = list(db.session.query(User).all())
+        return render_template('auth/user_list.tmpl',data=data)
+    else:
+        flash("Access deny", "warn")
+        return redirect('/')
+
+@blueprint.route('/user_edit/<int:id>', methods=['GET','POST'])
+@login_required
+def user_edit(id):
+    #if current_user.email== "admin@iservery.com":
+    user = db.session.query(User).get(id)
+    form = EditUserForm(obj = user)
+    if form.validate_on_submit():
+        new_user = user.update(**form.data)
+        flash("Saved successfully", "info")
+        return redirect(request.args.get('next') or url_for('auth.user_list'))
+    return render_template("auth/EditAccount.tmpl", form=form)
+
+@blueprint.route('/user_del/<int:id>', methods=['GET','POST'])
+@login_required
+def user_del(id):
+    #if current_user.email== "admin@iservery.com":
+    u=db.session.query(User).filter_by(id = id).first()
+    db.session.delete(u)
+    db.session.commit()
+    flash("User Removed", "info")
+    return redirect(request.args.get('next') or url_for('auth.user_list'))
+
+
+
+@blueprint.route('/user_add/', methods=['GET','POST'])
+@login_required
+def user_add():
+    if current_user.access== "A" or current_user.access== "B":
+        form = EditUserForm()
+        if form.validate_on_submit():
+            if not username_is_available(form.username.data):
+                    flash("Username is not allowed use another", "warning")
+                    return render_template("auth/EditAccount.tmpl", form=form)
+            if not email_is_available(form.email.data):
+                    flash("Email is used use another email", "warning")
+                    return render_template("auth/EditAccount.tmpl", form=form)
+            new_user = User.create(**form.data)
+            flash("Saved successfully", "info")
+            return redirect(request.args.get('next') or url_for('public.index'))
+
+        return render_template("auth/EditAccount.tmpl", form=form)
+    else:
+            flash("Access Deny", "Warn")
+            return redirect(request.args.get('next') or url_for('public.index'))

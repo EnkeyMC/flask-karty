@@ -95,6 +95,14 @@ class EditUserForm(Form):
         Predicate(isnumeric, message="Pleas only number value is possible"),
         InputRequired(message="You can't leave this empty")
     ])
+    full_name = TextField('Full Name', validators=[
+
+        InputRequired(message="You can't leave this empty")
+    ])
+    access = TextField('Access', validators=[
+
+        InputRequired(message="You can't leave this empty")
+    ])
 
 class Editdate(Form):
     #startdate = TimeField('Datum prichodu')
