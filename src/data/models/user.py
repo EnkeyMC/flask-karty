@@ -25,6 +25,7 @@ class User(CRUDModel, UserMixin):
     # pylint: disable=W0231
     def __init__(self, **kwargs):
         self.activate_token = generate_random_token()
+        self.access='U'
         for k, v in kwargs.iteritems():
             setattr(self, k, v)
 

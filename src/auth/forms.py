@@ -1,7 +1,7 @@
 import re
 
 from flask_wtf import Form
-from wtforms.fields import BooleanField, TextField, PasswordField
+from wtforms.fields import BooleanField, TextField, PasswordField,SelectField
 from wtforms_components  import TimeField
 from wtforms.validators import EqualTo, Email, InputRequired, Length
 
@@ -99,10 +99,7 @@ class EditUserForm(Form):
 
         InputRequired(message="You can't leave this empty")
     ])
-    access = TextField('Access', validators=[
-
-        InputRequired(message="You can't leave this empty")
-    ])
+    access=SelectField('Access',choices=[('A', 'SuperAdmin'), ('B', 'Admin'), ('U', 'User')])
 
 class Editdate(Form):
     #startdate = TimeField('Datum prichodu')

@@ -60,7 +60,7 @@ def forgot_password():
             return redirect(url_for("public.index"))
         else:
             flash("We couldn't find an account with that email. Please try again", 'warning')
-    return render_template("auth/forgot_password.tmpl", form=form)
+    return render_template("auth/forgot_password.tmpl", form=form,user=current_user)
 
 @login_manager.user_loader
 def load_user(userid):  # pylint: disable=W0612
@@ -78,7 +78,7 @@ def login():
             return redirect(request.args.get('next') or url_for('public.index'))
         else:
             flash("Invalid email/password combination", "danger")
-    return render_template("auth/login.tmpl", form=form)
+    return render_template("auth/login.tmpl", form=form,user=current_user)
 
 @blueprint.route('/logout', methods=['GET'])
 @login_required
@@ -96,7 +96,7 @@ def register():
         send_activation(new_user)
         flash("Thanks for signing up {}. Welcome!".format(escape(new_user.username)), 'info')
         return redirect(url_for('public.index'))
-    return render_template("auth/register.tmpl", form=form)
+    return render_template("auth/register.tmpl", form=form,user=current_user)
 
 
 @blueprint.route('/resend_activation_email', methods=['GET'])
@@ -121,7 +121,7 @@ def reset_password(userid, user_token):
         user_token.update(used=True)
         flash("Password updated! Please log in to your account", "info")
         return redirect(url_for('public.index'))
-    return render_template("auth/reset_password.tmpl", form=form)
+    return render_template("auth/reset_password.tmpl", form=form,user=current_user)
 @blueprint.route('/account', methods=['GET', 'POST'])
 @login_required
 def account():
@@ -131,17 +131,17 @@ def account():
         if form.username.data <> current_user.username :
             if not username_is_available(form.username.data):
                 flash("Username is not allowed use another", "warning")
-                return render_template("auth/EditAccount.tmpl", form=form)
+                return render_template("auth/EditAccount.tmpl", form=form,user=current_user)
         if form.email.data <> current_user.email:
             if not email_is_available(form.email.data):
                 flash("Email is used use another email", "warning")
-                return render_template("auth/EditAccount.tmpl", form=form)
+                return render_template("auth/EditAccount.tmpl", form=form,user=current_user)
         new_user = user.update(**form.data)
         login_user(new_user)
         flash("Saved successfully", "info")
         return redirect(request.args.get('next') or url_for('public.index'))
 
-    return render_template("auth/EditAccount.tmpl", form=form)
+    return render_template("auth/EditAccount.tmpl", form=form,user=current_user)
 
 @blueprint.route('/vypisy', methods=['GET'])
 @login_required
@@ -152,7 +152,7 @@ def vypisy():
     form = db.session.query( func.strftime('%Y-%m', Card.time).label("time"),func.strftime('%Y', Card.time).label("year"),func.strftime('%m', Card.time).label("month")).filter_by(card_number=current_user.card_number).group_by(func.strftime('%Y-%m', Card.time))
         #.group_by([func.day(Card.time)])
 
-    return render_template("auth/vypisy.tmpl", form=form, data=current_user.card_number)
+    return render_template("auth/vypisy.tmpl", form=form, data=current_user.card_number,user=current_user)
 
 @blueprint.route('/mesicni_vypis/<string:mesic>', methods=['GET'])
 @login_required
@@ -164,7 +164,7 @@ def mesicni_vypis(mesic):
                              func.min(func.strftime('%H:%M', Card.time)).label("Min"),( func.max(Card.time) - func.min(Card.time)).label("Rozdil"))\
         .filter((func.strftime('%Y-%-m', Card.time) == mesic) and (Card.card_number == current_user.card_number)).group_by(func.strftime('%Y-%m-%d', Card.time))
         #.group_by([func.day(Card.time)])
-    return render_template("auth/mesicni_vypisy.tmpl", form=form)
+    return render_template("auth/mesicni_vypisy.tmpl", form=form,user=current_user)
 
 
 from collections import OrderedDict
@@ -193,7 +193,7 @@ def tbl_insdata(od , do ):
 @blueprint.route('/tabletest', methods=['GET'])
 @login_required
 def tabletest():
-    return render_template('public/table.tmpl')
+    return render_template('public/table.tmpl',user=current_user)
 
 @blueprint.route('/caljsonr/<int:card_number>/<int:year>/<int:mount>', methods=['GET'])
 @login_required
@@ -284,7 +284,7 @@ def calendar(card_number,year,mounth):
     data['data']=datarow
 
 
-    return render_template('auth/mesicni_vypis.tmpl',data=data)
+    return render_template('auth/mesicni_vypis.tmpl',data=data,user=current_user)
 
 @blueprint.route('/calendar_edit/<int:card_number>/<int:year>/<int:mounth>/<int:day>', methods=['GET','POST'])
 @login_required
@@ -307,14 +307,14 @@ def calendar_edit(card_number,year,mounth,day):
         db.session.commit()
         flash("Saved successfully", "info")
         return redirect('calendar/'+str (card_number)+'/'+str(year)+'/'+str(mounth))
-    return render_template('auth/editdate.tmpl', form=form)
+    return render_template('auth/editdate.tmpl', form=form,user=current_user)
 
 @blueprint.route('/user_list', methods=['GET'])
 @login_required
 def user_list():
-    if current_user.email== "admin@iservery.com":
+    if current_user.access== "A" or current_user.access== "B":
         data = list(db.session.query(User).all())
-        return render_template('auth/user_list.tmpl',data=data)
+        return render_template('auth/user_list.tmpl',data=data,user=current_user)
     else:
         flash("Access deny", "warn")
         return redirect('/')
@@ -324,19 +324,26 @@ def user_list():
 def user_edit(id):
     #if current_user.email== "admin@iservery.com":
     user = db.session.query(User).get(id)
+    if current_user.access <> 'A'and user.access=='A':
+        flash("Edit not allowed", "info")
+        return redirect(request.args.get('next') or url_for('auth.user_list'))
     form = EditUserForm(obj = user)
+    if current_user.access== "B":
+       form.access.choices=[('U', 'User')]
     if form.validate_on_submit():
         new_user = user.update(**form.data)
         flash("Saved successfully", "info")
         return redirect(request.args.get('next') or url_for('auth.user_list'))
-    return render_template("auth/EditAccount.tmpl", form=form)
+    return render_template("auth/editAccountAdmin.tmpl", form=form,user=current_user)
 
 @blueprint.route('/user_del/<int:id>', methods=['GET','POST'])
 @login_required
 def user_del(id):
-    #if current_user.email== "admin@iservery.com":
-    u=db.session.query(User).filter_by(id = id).first()
-    db.session.delete(u)
+    user=db.session.query(User).filter_by(id = id).first()
+    if current_user.access <> 'A'and user.access=='A':
+        flash("remove not allowed", "info")
+        return redirect(request.args.get('next') or url_for('auth.user_list'))
+    db.session.delete(user)
     db.session.commit()
     flash("User Removed", "info")
     return redirect(request.args.get('next') or url_for('auth.user_list'))
@@ -348,18 +355,21 @@ def user_del(id):
 def user_add():
     if current_user.access== "A" or current_user.access== "B":
         form = EditUserForm()
+        if current_user.access== "B":
+            form.access.choices=[('U', 'User')]
         if form.validate_on_submit():
             if not username_is_available(form.username.data):
                     flash("Username is not allowed use another", "warning")
-                    return render_template("auth/EditAccount.tmpl", form=form)
+                    return render_template("auth/editAccountAdmin.tmpl", form=form,user=current_user)
             if not email_is_available(form.email.data):
                     flash("Email is used use another email", "warning")
-                    return render_template("auth/EditAccount.tmpl", form=form)
+                    return render_template("auth/editAccountAdmin.tmpl", form=form,user=current_user)
+
             new_user = User.create(**form.data)
             flash("Saved successfully", "info")
-            return redirect(request.args.get('next') or url_for('public.index'))
+            return redirect(request.args.get('next') or url_for('auth.user_list'))
 
-        return render_template("auth/EditAccount.tmpl", form=form)
+        return render_template("auth/editAccountAdmin.tmpl", form=form,user=current_user)
     else:
             flash("Access Deny", "Warn")
             return redirect(request.args.get('next') or url_for('public.index'))
