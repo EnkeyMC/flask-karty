@@ -11,7 +11,9 @@
     {{ render_input_field(form.username) }}
     {{ render_input_field(form.email) }}
     {{ render_password_field(form.password) }}
-    {{ render_input_field(form.card_number) }}
+    {% if user.access == 'A' or user.access == 'B'%}
+      {{ render_input_field(form.card_number) }}
+    {% endif %}
     {{ render_input_field(form.full_name) }}
     {{ render_input_choice(form.access) }}
     {{ render_submit() }}

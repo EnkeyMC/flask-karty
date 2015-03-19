@@ -28,8 +28,9 @@
         {% else %}
           {% if user.access == "A" or user.access == "B" %}
               <li><a href="{{ url_for('auth.user_list') }}">List uživatelů</a></li>
+              <li><a href="{{ url_for('auth.vypisy_vsichni') }}">Vypisy uživatelů</a></li>
           {% endif %}
-          <li><a href="{{ url_for('auth.vypisy') }}">List po měsících</a></li>
+          <li><a href="{{ url_for('auth.vypisy') }}">Vypis po měsících</a></li>
           <li><a href="{{ url_for('auth.account') }}">Účet: {{user.full_name}}</a></li>
           <li><a href="{{ url_for('auth.logout') }}">Odhlášení</a></li>
 

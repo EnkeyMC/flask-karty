@@ -92,8 +92,8 @@ class EditUserForm(Form):
     ])
 
     card_number = TextField('You access Card  number', validators=[
-        Predicate(isnumeric, message="Pleas only number value is possible"),
-        InputRequired(message="You can't leave this empty")
+        Predicate(isnumeric, message="Pleas only number value is possible")
+
     ])
     full_name = TextField('Full Name', validators=[
 

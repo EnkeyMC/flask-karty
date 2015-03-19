@@ -127,21 +127,31 @@ def reset_password(userid, user_token):
 def account():
     user = db.session.query(User).get(current_user.id)
     form = EditUserForm(obj = user)
+    if current_user.access== "B" or current_user.access == 'U':
+       form.access.choices=[('U', 'User')]
+       card=form.card_number.data
     if form.validate_on_submit():
         if form.username.data <> current_user.username :
             if not username_is_available(form.username.data):
                 flash("Username is not allowed use another", "warning")
-                return render_template("auth/EditAccount.tmpl", form=form,user=current_user)
+                return render_template("auth/editAccountAdmin.tmpl", form=form,user=current_user)
         if form.email.data <> current_user.email:
             if not email_is_available(form.email.data):
                 flash("Email is used use another email", "warning")
-                return render_template("auth/EditAccount.tmpl", form=form,user=current_user)
+                return render_template("auth/editAccountAdmin.tmpl", form=form,user=current_user)
+        form.card_number.data = card
         new_user = user.update(**form.data)
         login_user(new_user)
         flash("Saved successfully", "info")
         return redirect(request.args.get('next') or url_for('public.index'))
 
-    return render_template("auth/EditAccount.tmpl", form=form,user=current_user)
+    return render_template("auth/editAccountAdmin.tmpl", form=form,user=current_user)
+@blueprint.route('/vypisy_vsichni', methods=['GET'])
+@login_required
+def vypisy_vsichni():
+    form = db.session.query( func.strftime('%Y-%m', Card.time).label("time"),func.strftime('%Y', Card.time).label("year"),func.strftime('%m', Card.time).label("month"),User.full_name.label('fullname'),User.card_number.label('card_number')).group_by(func.strftime('%Y-%m', Card.time)).join(User,Card.card_number==User.card_number)
+    return render_template("auth/vypisy_vsichni.tmpl", form=form,user=current_user)
+
 
 @blueprint.route('/vypisy', methods=['GET'])
 @login_required
@@ -153,6 +163,19 @@ def vypisy():
         #.group_by([func.day(Card.time)])
 
     return render_template("auth/vypisy.tmpl", form=form, data=current_user.card_number,user=current_user)
+
+@blueprint.route('/mesicni_vypis_vsichni/<string:mesic>', methods=['GET'])
+@login_required
+def mesicni_vypis_alluser(mesic):
+
+    #form=Card.find_by_number(current_user.card_number)
+    #form = db.session.query(Card.time).filter_by(card_number=current_user.card_number)
+    form = db.session.query( func.strftime('%Y-%m-%d', Card.time).label("date"),func.max(func.strftime('%H:%M', Card.time)).label("Max"),\
+                             func.min(func.strftime('%H:%M', Card.time)).label("Min"),( func.max(Card.time) - func.min(Card.time)).label("Rozdil"))\
+        .filter((func.strftime('%Y-%-m', Card.time) == mesic) and (Card.card_number == current_user.card_number)).group_by(func.strftime('%Y-%m-%d', Card.time))
+        #.group_by([func.day(Card.time)])
+    return render_template("auth/mesicni_vypisy.tmpl", form=form,user=current_user)
+
 
 @blueprint.route('/mesicni_vypis/<string:mesic>', methods=['GET'])
 @login_required
