@@ -27,6 +27,7 @@
           <li><a href="{{ url_for('auth.register') }}">Sign up</a></li>
         {% else %}
           {% if user.access == "A" or user.access == "B" %}
+              <li><a href="{{ url_for('auth.newmonth') }}">Vytvoř měsíc</a></li>
               <li><a href="{{ url_for('auth.user_list') }}">List uživatelů</a></li>
               <li><a href="{{ url_for('auth.vypisy_vsichni') }}">Vypisy uživatelů</a></li>
           {% endif %}

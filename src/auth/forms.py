@@ -108,3 +108,5 @@ class Editdate(Form):
     #enddate = TextField('Datum odchodu')
 
 
+class MonthInsert(Form):
+    month = SelectField('Mesic',choices=[('2015-1', '2015-1'), ('2015-2', '2015-2'), ('2015-3', '2015-3')])

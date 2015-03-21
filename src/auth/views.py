@@ -3,7 +3,7 @@ from flask import (Blueprint, escape, flash, render_template,
 from flask_login import current_user, login_required, login_user, logout_user
 from sqlalchemy import func,asc,Date,cast,extract
 from sqlalchemy.types import DateTime
-from .forms import ResetPasswordForm, EmailForm, LoginForm, RegistrationForm,EditUserForm,username_is_available,email_is_available,Editdate
+from .forms import ResetPasswordForm, EmailForm, LoginForm, RegistrationForm,EditUserForm,username_is_available,email_is_available,Editdate,MonthInsert
 from ..data.database import db
 from ..data.models import User, UserPasswordToken,Card
 from ..data.util import generate_random_token
@@ -139,7 +139,8 @@ def account():
             if not email_is_available(form.email.data):
                 flash("Email is used use another email", "warning")
                 return render_template("auth/editAccountAdmin.tmpl", form=form,user=current_user)
-        form.card_number.data = card
+        if current_user.access <> "A":
+            form.card_number.data = card
         new_user = user.update(**form.data)
         login_user(new_user)
         flash("Saved successfully", "info")
@@ -394,5 +395,23 @@ def user_add():
 
         return render_template("auth/editAccountAdmin.tmpl", form=form,user=current_user)
     else:
-            flash("Access Deny", "Warn")
+            flash("Access Deny", "warn")
             return redirect(request.args.get('next') or url_for('public.index'))
+
+@blueprint.route('/newmonth', methods=['GET','POST'])
+@login_required
+def newmonth():
+    form = MonthInsert()
+    if form.validate_on_submit():
+        return redirect('/recreatemonth/'+ form.month.data)
+    return render_template('auth/recreatemonth.tmpl' , form = form , user = current_user)
+
+@blueprint.route('/recreatemonth/<string:month>', methods=['GET'])
+@login_required
+def createmonth(month):
+    users=db.session.query(User).all()
+    for user in users:
+        print user.card_number
+    flash("Mesic vytvoren", "info")
+    return redirect(request.args.get('next') or url_for('public.index'))
+
