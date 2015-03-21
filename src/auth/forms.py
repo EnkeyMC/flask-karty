@@ -1,4 +1,5 @@
 import re
+from datetime import datetime
 
 from flask_wtf import Form
 from wtforms.fields import BooleanField, TextField, PasswordField,SelectField
@@ -109,4 +110,14 @@ class Editdate(Form):
 
 
 class MonthInsert(Form):
-    month = SelectField('Mesic',choices=[('2015-1', '2015-1'), ('2015-2', '2015-2'), ('2015-3', '2015-3')])
+    date=datetime.today()
+    poledatumu=[]
+    for month in xrange(3,-3):
+        date1=date
+        mesic =  date.month-month
+        date1.replace(month=date.month-month)
+        print mesic
+        print date1.strftime('%Y-%m')
+        #poledatumu.append([date1.strftime('%Y-%m'),date1.strftime('%Y-%m')])
+    print poledatumu
+    month = SelectField(poledatumu)
