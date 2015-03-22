@@ -150,7 +150,8 @@ def account():
 @blueprint.route('/vypisy_vsichni', methods=['GET'])
 @login_required
 def vypisy_vsichni():
-    form = db.session.query( func.strftime('%Y-%m', Card.time).label("time"),func.strftime('%Y', Card.time).label("year"),func.strftime('%m', Card.time).label("month"),User.full_name.label('fullname'),User.card_number.label('card_number')).group_by(func.strftime('%Y-%m', Card.time)).join(User,Card.card_number==User.card_number)
+    #form = list(db.session.query( User.full_name.label('fullname'),User.card_number.label('card_number'),func.strftime('%Y-%m', Card.time).label("time"),func.strftime('%Y', Card.time).label("year"),func.strftime('%m', Card.time).label("month")).group_by(func.strftime('%Y-%m', Card.time)).join(Card,User.card_number==Card.card_number).all())
+    form = db.session.query( User.full_name.label('fullname'),User.card_number.label('card_number'),func.strftime('%Y-%m', Card.time).label("time"),func.strftime('%Y', Card.time).label("year"),func.strftime('%m', Card.time).label("month")).join(Card,User.card_number==Card.card_number).group_by(func.strftime('%Y-%m', Card.time),User.full_name).order_by(func.strftime('%Y-%m', Card.time)).all()
     return render_template("auth/vypisy_vsichni.tmpl", form=form,user=current_user)
 
 
@@ -409,9 +410,13 @@ def newmonth():
 @blueprint.route('/recreatemonth/<string:month>', methods=['GET'])
 @login_required
 def createmonth(month):
-    users=db.session.query(User).all()
+    datum=datetime.strptime(month + '-1',"%Y-%m-%d")
+    users=db.session.query(User).filter(Card.card_number <> '').all()
     for user in users:
-        print user.card_number
+        if not list(db.session.query(Card).filter(Card.card_number == user.card_number).filter(func.strftime('%H:%M', Card.time) == month)):
+            i=Card(card_number=user.card_number,time=datum)
+            db.session.add(i)
+    db.session.commit()
     flash("Mesic vytvoren", "info")
     return redirect(request.args.get('next') or url_for('public.index'))
 

@@ -12,7 +12,7 @@
 .tftable tr:hover {background-color:#ffff99;}
 </style>
 <table class="tftable" border="1">
-<tr><td>Den</td><td>Prichod</td><td>Odchod</td></tr>
+<tr><td>Den</td><td>Prichod</td><td>Odchod</td><td>Cas</td></tr>
     {% for n in data.data %}
         <tr>
             <td>{{ n['day'] }}</td>
@@ -21,7 +21,9 @@
             <td>{{ n['timespend'] }}</td>
 
             {% if n['dow'] < 5 %}
-            <td><a href ='/calendar_edit/{{ data.card_number}}/{{ data.year }}/{{ data.mounth }}/{{n['day']}}'>Edit</a></td>
+            {% if user.access == 'A' or user.access == 'B' %}
+                <td><a href ='/calendar_edit/{{ data.card_number}}/{{ data.year }}/{{ data.mounth }}/{{n['day']}}'>Edit</a></td>
+            {% endif %}
             {% endif %}
         </tr>
     </form>
