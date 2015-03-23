@@ -147,11 +147,33 @@ def account():
         return redirect(request.args.get('next') or url_for('public.index'))
 
     return render_template("auth/editAccountAdmin.tmpl", form=form,user=current_user)
-@blueprint.route('/vypisy_vsichni', methods=['GET'])
+
+
+
+@blueprint.route('/vypisy_vyber', methods=['GET','POST'])
 @login_required
-def vypisy_vsichni():
-    #form = list(db.session.query( User.full_name.label('fullname'),User.card_number.label('card_number'),func.strftime('%Y-%m', Card.time).label("time"),func.strftime('%Y', Card.time).label("year"),func.strftime('%m', Card.time).label("month")).group_by(func.strftime('%Y-%m', Card.time)).join(Card,User.card_number==Card.card_number).all())
-    form = db.session.query( User.full_name.label('fullname'),User.card_number.label('card_number'),func.strftime('%Y-%m', Card.time).label("time"),func.strftime('%Y', Card.time).label("year"),func.strftime('%m', Card.time).label("month")).join(Card,User.card_number==Card.card_number).group_by(func.strftime('%Y-%m', Card.time),User.full_name).order_by(func.strftime('%Y-%m', Card.time)).all()
+def mesicni_vypis_vyber():
+    form = MonthInsert()
+    if form.validate_on_submit():
+        return redirect('/vypisy_vsichni/'+ form.month.data)
+    return render_template('auth/recreatemonth.tmpl' , form = form , user = current_user)
+
+
+@blueprint.route('/vypisy_vsichni/<string:mesic>', methods=['GET'])
+@login_required
+def vypisy_vsichni(mesic):
+    #form = db.session.query( User.card_number.label('card_number'),User.full_name.label('fullname'),func.strftime('%Y-%m', Card.time).label("time"),\
+    #                         func.strftime('%Y', Card.time).label("year"),func.strftime('%m', Card.time).label("month")).\
+    #    join(Card,User.card_number==Card.card_number).group_by(func.strftime('%Y-%m', Card.time),User.full_name).\
+    #    filter(func.strftime('%Y-%m', Card.time) == mesic).\
+    #    order_by(User.full_name)
+    form = db.session.query( User.card_number.label('card_number'),User.full_name.label('fullname'),func.strftime('%Y-%m', Card.time).label("time"),\
+                             func.strftime('%Y', Card.time).label("year"),func.strftime('%m', Card.time).label("month"),\
+                             Card.stravenky(User.card_number,func.strftime('%Y-%m', Card.time))).\
+        join(Card,User.card_number==Card.card_number).group_by(func.strftime('%Y-%m', Card.time),User.full_name).\
+        filter(func.strftime('%Y-%m', Card.time) == mesic).\
+        order_by(User.full_name).all()
+
     return render_template("auth/vypisy_vsichni.tmpl", form=form,user=current_user)
 
 
@@ -174,7 +196,7 @@ def mesicni_vypis_alluser(mesic):
     #form = db.session.query(Card.time).filter_by(card_number=current_user.card_number)
     form = db.session.query( func.strftime('%Y-%m-%d', Card.time).label("date"),func.max(func.strftime('%H:%M', Card.time)).label("Max"),\
                              func.min(func.strftime('%H:%M', Card.time)).label("Min"),( func.max(Card.time) - func.min(Card.time)).label("Rozdil"))\
-        .filter((func.strftime('%Y-%-m', Card.time) == mesic) and (Card.card_number == current_user.card_number)).group_by(func.strftime('%Y-%m-%d', Card.time))
+        .filter(func.strftime('%Y-%-m', Card.time) == mesic).group_by(func.strftime('%Y-%m-%d', Card.time))
         #.group_by([func.day(Card.time)])
     return render_template("auth/mesicni_vypisy.tmpl", form=form,user=current_user)
 

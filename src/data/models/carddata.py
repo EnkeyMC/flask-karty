@@ -1,3 +1,4 @@
+from sqlalchemy import func
 from sqlalchemy.schema import Column
 from sqlalchemy.types import Integer, String,DateTime
 from ..database import db
@@ -21,3 +22,13 @@ class Card(CRUDModel):
     @staticmethod
     def find_by_number(card_number):
         return db.session.query(Card).filter_by(card_number=card_number).scalar()
+    @classmethod
+    def stravenky(cls,month,card_number):
+        narok=0
+        form = db.session.query( func.strftime('%Y-%m-%d', cls.time).label("date"),func.max(func.strftime('%H:%M', cls.time)).label("Max"),\
+                                 func.min(func.strftime('%H:%M', cls.time)).label("Min"),( func.max(cls.time) - func.min(cls.time)).label("Rozdil"))\
+            .filter(func.strftime('%Y-%m', cls.time) == month).filter(cls.card_number == card_number).group_by(func.strftime('%Y-%m-%d', cls.time)).all()
+        for n in form:
+            if n.rozdil >= 3:
+                narok = narok + 1
+        return narok
