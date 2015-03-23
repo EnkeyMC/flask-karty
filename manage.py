@@ -27,7 +27,11 @@ def import_env():
 
 import_env()
 
+
+
 app = create_app(app_config)
+app.config['UPLOAD_FOLDER'] = 'uploads/'
+app.config['ALLOWED_EXTENSIONS'] = set(['xml'])
 manager = Manager(app)
 test_manager = Manager(usage='Performs test related operations')
 

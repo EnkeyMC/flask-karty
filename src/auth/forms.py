@@ -1,10 +1,13 @@
 import re
+
 from datetime import datetime,date
 
 from flask_wtf import Form
-from wtforms.fields import BooleanField, TextField, PasswordField,SelectField
+from wtforms.fields import BooleanField, TextField, PasswordField,SelectField,FieldList
+from flask_wtf.file import FileField
 from wtforms_components  import TimeField
-from wtforms.validators import EqualTo, Email, InputRequired, Length
+from wtforms import validators
+from wtforms.validators import EqualTo, Email, InputRequired, Length,regexp
 
 from ..data.models import User
 from ..fields import Predicate
@@ -119,3 +122,12 @@ class MonthInsert(Form):
     for i in range(1,3):
         months_choices.append((datetime(datum.year+1, i, 1).strftime('%Y-%m'), datetime(datum.year+1, i, 1).strftime('%Y-%m')))
     month = SelectField('Vyber', default=datetime(datum.year, datum.month, 1).strftime('%Y-%m'),choices = months_choices)
+
+class FileUploadForm(Form):
+    #fileName = FieldList(FileField())
+    filename        = FileField(u'Soubor xml')
+    #, [validators.regexp(u'^[^/\\]\.xml$')])
+    #image        = FileField(u'Image File', [validators.regexp(u'^[^/\\]\.jpg$')])
+    def validate_image(form, field):
+        if field.data:
+            field.data = re.sub(r'[^a-z0-9_.-]', '_', field.data)

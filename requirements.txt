@@ -18,3 +18,5 @@ pyscss==1.2.0
 sqlalchemy==0.9.3
 WTForms-Components
 simplejson
+xmltodict
+Werkzeug

@@ -1,9 +1,12 @@
+import  os
 from flask import (Blueprint, escape, flash, render_template,
                    redirect, request, url_for,jsonify)
 from flask_login import current_user, login_required, login_user, logout_user
+from werkzeug.utils import secure_filename
 from sqlalchemy import func,asc,Date,cast,extract
 from sqlalchemy.types import DateTime
-from .forms import ResetPasswordForm, EmailForm, LoginForm, RegistrationForm,EditUserForm,username_is_available,email_is_available,Editdate,MonthInsert
+from .forms import ResetPasswordForm, EmailForm, LoginForm, RegistrationForm,EditUserForm,username_is_available,email_is_available,Editdate,\
+    MonthInsert,FileUploadForm
 from ..data.database import db
 from ..data.models import User, UserPasswordToken,Card
 from ..data.util import generate_random_token
@@ -13,7 +16,7 @@ from ..extensions import login_manager
 import simplejson as json
 from collections import namedtuple
 from datetime import datetime,timedelta
-
+from .xmlparse import mujxmlparse
 def last_day_of_month(year, month):
         """ Work out the last day of the month """
         last_days = [31, 30, 29, 28, 27]
@@ -441,4 +444,27 @@ def createmonth(month):
     db.session.commit()
     flash("Mesic vytvoren", "info")
     return redirect(request.args.get('next') or url_for('public.index'))
+
+@blueprint.route('/upload', methods=['GET', 'POST'])
+@login_required
+def upload():
+    form = FileUploadForm()
+    if form.validate_on_submit():
+        data = request.files[form.filename.name].read()
+        filename = secure_filename(form.filename.data.filename)
+        file_path = os.path.join('./src/uploads/', filename)
+        open(file_path, 'w').write(data)
+        flash('Ulozeno',category='info')
+    return render_template("auth/fileupload.tmpl",form=form,user=current_user)
+
+@blueprint.route('/xmlparse', methods=['GET'])
+@login_required
+def xmlparse():
+    #with open('./src/uploads/ctecka.xml', 'r') as content_file:
+    #content = content_file.read()
+    d = open('./src/uploads/ctecka.xml', 'r').read()
+    if mujxmlparse(d):
+        return "Ok"
+    else:
+        return "False"
 
