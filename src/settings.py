@@ -27,7 +27,7 @@ class Config(object):
     BCRYPT_LOG_ROUNDS = 4
 
     # Mail settings
-    MAIL_SERVER = 'smtp.googlemail.com'
+    MAIL_SERVER = 'mail.iservery.cz'
     MAIL_PORT = 465
     MAIL_USE_TLS = False
     MAIL_USE_SSL = True

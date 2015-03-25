@@ -174,12 +174,14 @@ def vypisy_vsichni(mesic):
     #    join(Card,User.card_number==Card.card_number).group_by(func.strftime('%Y-%m', Card.time),User.full_name).\
     #    filter(func.strftime('%Y-%m', Card.time) == mesic).\
     #    order_by(User.full_name).all()
+    #for a in form:
+    #    print form.index(a)
     stravenka=[]
     for u in form:
         data=pole_calendar(int(u[0]),int(u[3]),int(u[4]))
         stravenka.append([u[0],data['stravenka']])
 
-    return render_template("auth/vypisy_vsichni.tmpl",stravenka = stravenka, form=form,user=current_user)
+    return render_template("auth/vypisy_vsichni.tmpl",stravenka = stravenka, form=form ,user=current_user)
 
 
 @blueprint.route('/vypisy', methods=['GET'])

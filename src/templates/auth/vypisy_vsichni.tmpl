@@ -12,12 +12,12 @@
 </style>
 
 <table class="tftable" border="1">
-<tr><td>Uživatel</td><td>Měsíc</td><td>Dní</td><td>Nárok na stravenky</td></tr>
+<tr><td>Uživatel</td><td>Měsíc</td><td>Nárok na stravenky</td></tr>
 {% for m  in form %}
         <tr>
             <td>{{m.fullname}}</td>
             <td><a href=/calendar/{{m.card_number}}/{{m.year}}/{{m.month}}>{{m.time}}</a></td>
-            <td>{{m.narok}}</td>
+            <td>{{stravenka[form.index(m)][1]}}</td>
         </tr>
     {% endfor %}
     <table>
