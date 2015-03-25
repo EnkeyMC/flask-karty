@@ -1,5 +1,6 @@
 {% macro emit_css(bundle) %}
   {% assets bundle %}
+    <link rel="shortcut icon" href="{{ url_for('static', filename='favicon.ico') }}">
     <link rel="stylesheet" href="{{ ASSET_URL }}">
   {% endassets %}
 {% endmacro %}

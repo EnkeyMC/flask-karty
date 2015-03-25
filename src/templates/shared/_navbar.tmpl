@@ -27,12 +27,13 @@
           <li><a href="{{ url_for('auth.register') }}">Sign up</a></li>
         {% else %}
           {% if user.access == "A" or user.access == "B" %}
+              <li><a href="{{ url_for('auth.upload') }}">Nahrát xml</a></li>
               <li><a href="{{ url_for('auth.newmonth') }}">Vytvoř měsíc</a></li>
               <li><a href="{{ url_for('auth.user_list') }}">List uživatelů</a></li>
               <li><a href="{{ url_for('auth.mesicni_vypis_vyber') }}">Vypisy uživatelů</a></li>
           {% endif %}
           <li><a href="{{ url_for('auth.vypisy') }}">Vypis po měsících</a></li>
-          <li><a href="{{ url_for('auth.account') }}">Účet: {{user.full_name}}</a></li>
+          <li><a href="{{ url_for('auth.account') }}">Účet:{{user.full_name}}</a></li>
           <li><a href="{{ url_for('auth.logout') }}">Odhlášení</a></li>
 
         {% endif %}

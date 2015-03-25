@@ -1,8 +1,8 @@
-import  os
+#import  os
 from flask import (Blueprint, escape, flash, render_template,
                    redirect, request, url_for,jsonify)
 from flask_login import current_user, login_required, login_user, logout_user
-from werkzeug.utils import secure_filename
+#from werkzeug.utils import secure_filename
 from sqlalchemy import func,asc,Date,cast,extract
 from sqlalchemy.types import DateTime
 from .forms import ResetPasswordForm, EmailForm, LoginForm, RegistrationForm,EditUserForm,username_is_available,email_is_available,Editdate,\
@@ -13,8 +13,6 @@ from ..data.util import generate_random_token
 from ..decorators import reset_token_required
 from ..emails import send_activation, send_password_reset
 from ..extensions import login_manager
-import simplejson as json
-from collections import namedtuple
 from datetime import datetime,timedelta
 from .xmlparse import mujxmlparse
 def last_day_of_month(year, month):
@@ -165,19 +163,23 @@ def mesicni_vypis_vyber():
 @blueprint.route('/vypisy_vsichni/<string:mesic>', methods=['GET'])
 @login_required
 def vypisy_vsichni(mesic):
-    #form = db.session.query( User.card_number.label('card_number'),User.full_name.label('fullname'),func.strftime('%Y-%m', Card.time).label("time"),\
-    #                         func.strftime('%Y', Card.time).label("year"),func.strftime('%m', Card.time).label("month")).\
-    #    join(Card,User.card_number==Card.card_number).group_by(func.strftime('%Y-%m', Card.time),User.full_name).\
-    #    filter(func.strftime('%Y-%m', Card.time) == mesic).\
-    #    order_by(User.full_name)
     form = db.session.query( User.card_number.label('card_number'),User.full_name.label('fullname'),func.strftime('%Y-%m', Card.time).label("time"),\
-                             func.strftime('%Y', Card.time).label("year"),func.strftime('%m', Card.time).label("month"),\
-                             Card.stravenky(User.card_number,func.strftime('%Y-%m', Card.time))).\
+                             func.strftime('%Y', Card.time).label("year"),func.strftime('%m', Card.time).label("month")).\
         join(Card,User.card_number==Card.card_number).group_by(func.strftime('%Y-%m', Card.time),User.full_name).\
         filter(func.strftime('%Y-%m', Card.time) == mesic).\
         order_by(User.full_name).all()
+    #form = db.session.query( User.card_number.label('card_number'),User.full_name.label('fullname'),func.strftime('%Y-%m', Card.time).label("time"),\
+    #                         func.strftime('%Y', Card.time).label("year"),func.strftime('%m', Card.time).label("month"),\
+    #                         Card.stravenky(User.card_number,func.strftime('%Y-%m', Card.time))).\
+    #    join(Card,User.card_number==Card.card_number).group_by(func.strftime('%Y-%m', Card.time),User.full_name).\
+    #    filter(func.strftime('%Y-%m', Card.time) == mesic).\
+    #    order_by(User.full_name).all()
+    stravenka=[]
+    for u in form:
+        data=pole_calendar(int(u[0]),int(u[3]),int(u[4]))
+        stravenka.append([u[0],data['stravenka']])
 
-    return render_template("auth/vypisy_vsichni.tmpl", form=form,user=current_user)
+    return render_template("auth/vypisy_vsichni.tmpl",stravenka = stravenka, form=form,user=current_user)
 
 
 @blueprint.route('/vypisy', methods=['GET'])
@@ -270,11 +272,9 @@ def caljson_edit(card_number,year,mount):
     #return render_template('auth/calendar.tmpl')
     return jsonify(data=data)
 
-@blueprint.route('/calendar/<int:card_number>/<int:year>/<int:mounth>', methods=['GET'])
-@login_required
-def calendar(card_number,year,mounth):
-    lastday = last_day_of_month(year , mounth)
 
+def pole_calendar(card_number,year,month):
+    lastday = last_day_of_month(year , month)
     datarow=[]
     data={}
     startdate='0:00'
@@ -283,7 +283,7 @@ def calendar(card_number,year,mounth):
     #hodnota = list(db.session.query( func.strftime('%d', Card.time).label("den"),func.max(func.strftime('%H:%M', Card.time)).label("Max"),\
     #                         func.min(func.strftime('%H:%M', Card.time)).label("Min"))\
     #                        .filter(func.date(Card.time) == fromdate.date()).filter(Card.card_number == card_number).group_by(func.date(Card.time)))
-    ff= datetime(year, mounth, 1).strftime('%Y-%-m')
+    ff= datetime(year, month, 1).strftime('%Y-%-m')
     #hodnota = list(db.session.query( func.strftime('%d', Card.time).label("den"),func.max(func.strftime('%H:%M', Card.time)).label("Max"),\
      #                        func.min(func.strftime('%H:%M', Card.time)).label("Min"))\
       #                   .filter(Card.card_number == card_number).group_by(func.strftime('%Y-%m-%d', Card.time)))
@@ -292,19 +292,19 @@ def calendar(card_number,year,mounth):
     hodnota = list(db.session.query( extract('day', Card.time).label("den")\
                         ,func.min(func.strftime('%H:%M', Card.time)).label("Min")\
                         ,func.max(func.strftime('%H:%M', Card.time)).label("Max"))\
-                        .filter(extract('month', Card.time) == mounth  ) .filter(extract('year', Card.time) == year  ).filter(Card.card_number==card_number).group_by(func.strftime('%Y-%m-%d', Card.time)))
+                        .filter(extract('month', Card.time) == month  ) .filter(extract('year', Card.time) == year  ).filter(Card.card_number==card_number).group_by(func.strftime('%Y-%m-%d', Card.time)))
             #.filter(datetime(Card.time).month == mounth  ))
     for day in xrange(1,lastday):
         d = {}
         d['day']=day
-        d['dow']= datetime(year, mounth, day).weekday()
+        d['dow']= datetime(year, month, day).weekday()
         datafromdb=filter(lambda x: x[0] == day, hodnota)
         if d['dow'] > 4:
             d['startdate']=''
             d['enddate']=''
         else:
-            fromdate=datetime(year, mounth, day)
-            todate=datetime(year, mounth, day) + timedelta(days=1)
+            fromdate=datetime(year, month, day)
+            todate=datetime(year, month, day) + timedelta(days=1)
 
             #hodnota = db.session.query( func.min(func.strftime('%H:%M', Card.time)).label("Min")).filter(Card.time >= fromdate).filter(Card.time < todate).filter(Card.card_number == card_number)
             #hodnota = list(db.session.query(func.date(Card.time).label('xxx')).filter(func.date(Card.time) == fromdate.date() ).filter(Card.card_number == card_number).all())
@@ -328,12 +328,16 @@ def calendar(card_number,year,mounth):
 
         datarow.append(d)
     data['user']=current_user.email
-    data['mounth']=mounth
+    data['mounth']=month
     data['year']=year
     data['card_number']=card_number
     data['data']=datarow
+    return data
 
-
+@blueprint.route('/calendar/<int:card_number>/<int:year>/<int:month>', methods=['GET'])
+@login_required
+def calendar(card_number,year,month):
+    data = pole_calendar(card_number,year,month)
     return render_template('auth/mesicni_vypis.tmpl',data=data,user=current_user)
 
 @blueprint.route('/calendar_edit/<int:card_number>/<int:year>/<int:mounth>/<int:day>', methods=['GET','POST'])
@@ -451,20 +455,10 @@ def upload():
     form = FileUploadForm()
     if form.validate_on_submit():
         data = request.files[form.filename.name].read()
-        filename = secure_filename(form.filename.data.filename)
-        file_path = os.path.join('./src/uploads/', filename)
-        open(file_path, 'w').write(data)
-        flash('Ulozeno',category='info')
-    return render_template("auth/fileupload.tmpl",form=form,user=current_user)
-
-@blueprint.route('/xmlparse', methods=['GET'])
-@login_required
-def xmlparse():
-    #with open('./src/uploads/ctecka.xml', 'r') as content_file:
-    #content = content_file.read()
-    d = open('./src/uploads/ctecka.xml', 'r').read()
-    if mujxmlparse(d):
-        return "Ok"
-    else:
-        return "False"
+        #filename = secure_filename(form.filename.data.filename)
+        #file_path = os.path.join('./src/uploads/', filename)
+        #open(file_path, 'w').write(data)
+        if mujxmlparse(data):
+            flash('Data nahrana',category='info')
+    return render_template("auth/fileupload.tmpl", form = form , user = current_user )
 

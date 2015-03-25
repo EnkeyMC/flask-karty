@@ -6,28 +6,33 @@
     :copyright: (c) 2012 by Aukce Elevo s.r.o.
 """
 import xmltodict
-#from xml.etre
-class RemoveFirstLine:
-    def __init__(self, f):
-        self.f = f
-        self.xmlTagFound = False
-
-    def __getattr__(self, attr):
-        return getattr(self, self.f)
-
-    def write(self, s):
-        if not self.xmlTagFound:
-            x = 0 # just to be safe
-            for x, c in enumerate(s):
-                if c == '>':
-                    self.xmlTagFound = True
-                    break
-            self.f.write(s[x+1:])
-        else:
-            self.f.write(s)
-
+from datetime import datetime
+from itertools import groupby
+from ..data.database import db
+from ..data.models import User, Card
 def mujxmlparse(data):
-    doc=xmltodict.parse(RemoveFirstLine(data), xml_attribs=True)
-    print doc['DATAPACKET']['METADATA']
-    print doc['DATAPACKET']['ROWDATA']['ROW']
+    data = data.decode("windows-1250").encode("utf-8")
+    doc=xmltodict.parse(data, xml_attribs=True)
+    do = doc['DATAPACKET']['ROWDATA']['ROW']
+    mydata = []
+    for d in do:
+        mydata.append([d['@CHECKTIME'],d['@PIN'],d['@Name']])
+    result = {}
+    sortkeyfn = key=lambda s:s[1]
+    for key,valuesiter in groupby(mydata, key=sortkeyfn):
+        result[key] = list(v[2] for v in valuesiter)
+    # pridani uzivatelu pokud neexistuji
+    for i in result:
+        if not db.session.query(User).filter(User.card_number == i).filter(User.full_name == result[i][0]).first():
+            i=User(card_number=int(i),username=i,full_name=result[i][0],email=i+'@sspu-opava.cz')
+            db.session.add(i)
+    db.session.commit()
+
+    result = {}
+    for i in mydata:
+        i=Card(card_number=i[1],time=datetime.strptime(i[0], "%Y-%m-%d %H:%M:%S"))
+        db.session.add(i)
+    db.session.commit()
+
+
     return True
