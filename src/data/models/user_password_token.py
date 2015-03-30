@@ -18,7 +18,7 @@ class UserPasswordToken(CRUDModel):
 
     user_id = Column(Integer, ForeignKey('users.id'), nullable=False)
     user = relationship(User)
-    value = Column(String, nullable=False, index=True)
+    value = Column(String(128), nullable=False, index=True)
     used = Column(Boolean(name="used"), default=False)
     expiration_dt = Column(DateTime)
 

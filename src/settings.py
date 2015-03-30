@@ -75,7 +75,9 @@ class ProductionConfig(Config):
     APP_LOG_LEVEL = logging.INFO
 
     # This must be defined in Heroku or locally
+    os.environ['DATABASE_URL']='mysql+mysqlconnector://karty:karty@localhost/karty'
     SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL')
+
 
     # Increase rounds for production instances
     # timeit Bcrypt().generate_password_hash('some12uihr3', 7) ~ 11.4ms per loop

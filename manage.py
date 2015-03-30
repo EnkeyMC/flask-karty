@@ -25,13 +25,16 @@ def import_env():
             if len(var) == 2:
                 os.environ[var[0]] = var[1]
 
+    os.environ['DATABASE_URL']='mysql+mysqlconnector://karty:karty@localhost/karty'
 import_env()
 
 
 
 app = create_app(app_config)
+app.secret_key='secretkey'
 app.config['UPLOAD_FOLDER'] = 'uploads/'
 app.config['ALLOWED_EXTENSIONS'] = set(['xml'])
+app.config['SQLALCHEMY_DATABASE_URI']=os.environ['DATABASE_URL']
 manager = Manager(app)
 test_manager = Manager(usage='Performs test related operations')
 

@@ -38,5 +38,5 @@ class DatabaseConnection(object):
             raise
         finally:
             session.close()
-
+#db = DatabaseConnection(app.config['SQLALCHEMY_DATABASE_URI'])
 db = DatabaseConnection(app_config.SQLALCHEMY_DATABASE_URI)
