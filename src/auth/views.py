@@ -156,8 +156,24 @@ def account():
 def mesicni_vypis_vyber():
     form = MonthInsert()
     if form.validate_on_submit():
-        return redirect('/vypisy_vsichni/'+ form.month.data)
+        return redirect('/sestava_vsichni/'+ form.month.data)
     return render_template('auth/recreatemonth.tmpl' , form = form , user = current_user)
+
+
+@blueprint.route('/sestava_vsichni/<string:mesic>', methods=['GET'])
+@login_required
+def sestava_vsichni(mesic):
+    form = db.session.query( User.card_number.label('card_number'),User.full_name.label('fullname'),func.DATE_FORMAT( Card.time,'%Y-%m').label("time"),\
+                             func.DATE_FORMAT( Card.time,'%Y').label("year"),func.DATE_FORMAT( Card.time,'%m').label("month")).\
+        join(Card,User.card_number==Card.card_number).group_by(func.DATE_FORMAT( Card.time,'%Y-%m'),User.full_name).\
+        filter(func.DATE_FORMAT( Card.time,'%Y-%m') == mesic).\
+        order_by(User.full_name).all()
+    poledat=[]
+    for u in form:
+        prom=pole_calendar(int(u[0]),int(u[3]),int(u[4]))
+        poledat.append(prom)
+    print poledat
+    return render_template("auth/sestava_vsichni.tmpl",data = poledat, form=form ,user=current_user)
 
 
 @blueprint.route('/vypisy_vsichni/<string:mesic>', methods=['GET'])
@@ -333,13 +349,14 @@ def pole_calendar(card_number,year,month):
             d['timespend']=round(rozdil.total_seconds() / 3600,2)
             if d['timespend'] >= 3:
                 data['stravenka'] = data['stravenka'] + 1
-
         datarow.append(d)
-    data['user']=current_user.email
+    data['user']=''
+    data['lastday']=lastday
     data['mounth']=month
     data['year']=year
     data['card_number']=card_number
     data['data']=datarow
+
     return data
 
 @blueprint.route('/calendar/<int:card_number>/<int:year>/<int:month>', methods=['GET'])

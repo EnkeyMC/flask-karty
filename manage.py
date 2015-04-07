@@ -25,7 +25,7 @@ def import_env():
             if len(var) == 2:
                 os.environ[var[0]] = var[1]
 
-    os.environ['DATABASE_URL']='mysql+mysqlconnector://karty:karty@localhost/karty'
+    #os.environ['DATABASE_URL']='mysql+mysqlconnector://karty:karty@localhost/karty'
 import_env()
 
 
