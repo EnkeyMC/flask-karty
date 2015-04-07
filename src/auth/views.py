@@ -348,7 +348,10 @@ def pole_calendar(card_number,year,month):
             rozdil=datetime.strptime(d['enddate'],"%H:%M")-datetime.strptime(d['startdate'],"%H:%M")
             d['timespend']=round(rozdil.total_seconds() / 3600,2)
             if d['timespend'] >= 3:
+                d['dost'] = 0
                 data['stravenka'] = data['stravenka'] + 1
+            else:
+                d['dost'] = 1
         datarow.append(d)
     data['user']=''
     data['lastday']=lastday

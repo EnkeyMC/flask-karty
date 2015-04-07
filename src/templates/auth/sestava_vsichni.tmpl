@@ -7,7 +7,7 @@
 .tftable {font-size:12px;color:#333333;width:100%;border-width: 1px;border-color: #729ea5;border-collapse: collapse;}
 .tftable th {font-size:12px;background-color:#acc8cc;border-width: 1px;padding: 8px;border-style: solid;border-color: #729ea5;text-align:left;}
 .tftable tr {background-color:#ffffff;}
-.tftable td {font-size:12px;border-width: 1px;padding: 8px;border-style: solid;border-color: #729ea5;}
+.tftable td {font-size:8px;border-width: 1px;padding: 3px;border-style: solid;border-color: #729ea5;}
 .tftable tr:hover {background-color:#ffff99;}
 </style>
 
@@ -20,21 +20,27 @@
 <th>Stravenek</th></tr>
 {% for m  in form %}
         <tr>
-            <td rowspan="3"><a href=/calendar/{{ m.card_number }}/{{ m.year }}/{{ m.month }}>{{m.fullname}}</a></td>
+            <td rowspan="3" style="font-size: 12px"><a href=/calendar/{{ m.card_number }}/{{ m.year }}/{{ m.month }}>{{m.fullname}}</a></td>
             {% for n  in data[form.index(m)]['data'] %}
-                <td>{{n['startdate']}}</td>
+                <td style="align:right">{{n['startdate']}}</td>
             {% endfor %}
-            <td rowspan="3">{{ data[form.index(m)]['stravenka'] }}</td>
+            <td rowspan="3" style="font-size: 12px">{{ data[form.index(m)]['stravenka'] }}</td>
             </tr>
             <tr>
             {% for n  in data[form.index(m)]['data'] %}
-                <td>{{n['enddate']}}</td>
+                <td style="align:right">{{n['enddate']}}</td>
             {% endfor %}
 
             </tr>
             <tr>
             {% for n  in data[form.index(m)]['data'] %}
-                <td>{{n['timespend']}}</td>
+
+                    {% if n['dost'] == 1 %}
+                        <td style="background-color: yellow;align:right">
+                    {% else %}
+                        <td style="align:right">
+                    {% endif %}
+                    {{n['timespend']}}</td>
             {% endfor %}
             </tr>
 
