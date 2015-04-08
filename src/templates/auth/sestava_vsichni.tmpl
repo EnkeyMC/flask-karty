@@ -9,6 +9,17 @@
 .tftable tr {background-color:#ffffff;}
 .tftable td {font-size:8px;border-width: 1px;padding: 3px;border-style: solid;border-color: #729ea5;}
 .tftable tr:hover {background-color:#ffff99;}
+
+@media print {
+    .container {
+        margin: 0;
+    }
+
+    a[href]:after {
+        content: none !important;
+    }
+}
+
 </style>
 
 <table class="tftable" border="1">
@@ -24,7 +35,7 @@
             {% for n  in data[form.index(m)]['data'] %}
                 <td style="align:right">{{n['startdate']}}</td>
             {% endfor %}
-            <td rowspan="3" style="font-size: 12px">{{ data[form.index(m)]['stravenka'] }}</td>
+            <td rowspan="3" style="font-size: 12px"cd cd>{{ data[form.index(m)]['stravenka'] }}</td>
             </tr>
             <tr>
             {% for n  in data[form.index(m)]['data'] %}

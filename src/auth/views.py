@@ -172,8 +172,12 @@ def sestava_vsichni(mesic):
     for u in form:
         prom=pole_calendar(int(u[0]),int(u[3]),int(u[4]))
         poledat.append(prom)
-    print poledat
-    return render_template("auth/sestava_vsichni.tmpl",data = poledat, form=form ,user=current_user)
+#    print poledat
+    if len(form) == 0:
+        flash("No data",category="info")
+        return redirect(url_for("public.index"))
+    else:
+        return render_template("auth/sestava_vsichni.tmpl",data = poledat, form=form ,user=current_user)
 
 
 @blueprint.route('/vypisy_vsichni/<string:mesic>', methods=['GET'])
