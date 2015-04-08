@@ -175,7 +175,7 @@ def sestava_vsichni(mesic):
 #    print poledat
     if len(form) == 0:
         flash("No data",category="info")
-        return redirect(url_for("public.index"))
+        return redirect(url_for("auth.mesicni_vypis_vyber"))
     else:
         return render_template("auth/sestava_vsichni.tmpl",data = poledat, form=form ,user=current_user)
 
