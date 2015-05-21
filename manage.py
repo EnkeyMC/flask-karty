@@ -4,6 +4,7 @@
 Usage: ./manage.py [submanager] <command>
 Manage script for development. Type ./manage.py for more info
 """
+import argparse
 import os
 
 from flask_script import Manager
@@ -25,7 +26,7 @@ def import_env():
             if len(var) == 2:
                 os.environ[var[0]] = var[1]
 
-    #os.environ['DATABASE_URL']='mysql+mysqlconnector://karty:karty@localhost/karty'
+    #os.environ['DATABASE_URL']='mysql+mysqlconnector://root:root@localhost/karty'
 import_env()
 
 

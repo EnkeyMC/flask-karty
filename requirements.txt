@@ -20,4 +20,5 @@ WTForms-Components
 simplejson
 xmltodict
 Werkzeug
-blockspring
+mysql-connector-python
+paho-mqtt
