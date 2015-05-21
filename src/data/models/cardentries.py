@@ -1,16 +1,15 @@
-from sqlalchemy import func
+from sqlalchemy import func, ForeignKey
 from sqlalchemy.schema import Column
 from sqlalchemy.types import Integer, String,DateTime
 from ..database import db
 from ..mixins import CRUDModel
 
-class Card(CRUDModel):
-    __tablename__ = 'carddata'
+class CardEntries(CRUDModel):
+    __tablename__ = 'cardentries'
     __public__ = ['id', 'card_number', 'time']
 
     id = Column(Integer, primary_key=True)
-    card_number = Column(String(32),  index=True, doc="Card access number")
-    id_user = Column(Integer, index=True)
+    card_number = Column(String(32), ForeignKey("card.card_number"), nullable=False,  index=True, doc="Card access number")
     time = Column(DateTime)
     id_card_reader = Column(Integer)
         # Use custom constructor
@@ -21,7 +20,7 @@ class Card(CRUDModel):
 
     @staticmethod
     def find_by_number(card_number):
-        return db.session.query(Card).filter_by(card_number=card_number).scalar()
+        return db.session.query(CardEntries).filter_by(card_number=card_number).scalar()
     @classmethod
     def stravenky(cls,month,card_number):
         narok=0

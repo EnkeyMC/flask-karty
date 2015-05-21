@@ -8,7 +8,7 @@ from sqlalchemy.types import DateTime
 from .forms import ResetPasswordForm, EmailForm, LoginForm, RegistrationForm,EditUserForm,username_is_available,email_is_available,Editdate,\
     MonthInsert,FileUploadForm
 from ..data.database import db
-from ..data.models import User, UserPasswordToken,Card
+from ..data.models import User, UserPasswordToken,CardEntries
 from ..data.util import generate_random_token
 from ..decorators import reset_token_required
 from ..emails import send_activation, send_password_reset
@@ -163,10 +163,10 @@ def mesicni_vypis_vyber():
 @blueprint.route('/sestava_vsichni/<string:mesic>', methods=['GET'])
 @login_required
 def sestava_vsichni(mesic):
-    form = db.session.query( User.card_number.label('card_number'),User.full_name.label('fullname'),func.DATE_FORMAT( Card.time,'%Y-%m').label("time"),\
-                             func.DATE_FORMAT( Card.time,'%Y').label("year"),func.DATE_FORMAT( Card.time,'%m').label("month")).\
-        join(Card,User.card_number==Card.card_number).group_by(func.DATE_FORMAT( Card.time,'%Y-%m'),User.full_name).\
-        filter(func.DATE_FORMAT( Card.time,'%Y-%m') == mesic).\
+    form = db.session.query( User.card_number.label('card_number'),User.full_name.label('fullname'),func.DATE_FORMAT( CardEntries.time,'%Y-%m').label("time"),\
+                             func.DATE_FORMAT( CardEntries.time,'%Y').label("year"),func.DATE_FORMAT( CardEntries.time,'%m').label("month")).\
+        join(CardEntries,User.card_number==CardEntries.card_number).group_by(func.DATE_FORMAT( CardEntries.time,'%Y-%m'),User.full_name).\
+        filter(func.DATE_FORMAT( CardEntries.time,'%Y-%m') == mesic).\
         order_by(User.full_name).all()
     poledat=[]
     for u in form:
@@ -188,10 +188,10 @@ def vypisy_vsichni(mesic):
     #    join(Card,User.card_number==Card.card_number).group_by(func.strftime('%Y-%m', Card.time),User.full_name).\
     #    filter(func.strftime('%Y-%m', Card.time) == mesic).\
     #    order_by(User.full_name).all()
-    form = db.session.query( User.card_number.label('card_number'),User.full_name.label('fullname'),func.DATE_FORMAT( Card.time,'%Y-%m').label("time"),\
-                             func.DATE_FORMAT( Card.time,'%Y').label("year"),func.DATE_FORMAT( Card.time,'%m').label("month")).\
-        join(Card,User.card_number==Card.card_number).group_by(func.DATE_FORMAT( Card.time,'%Y-%m'),User.full_name).\
-        filter(func.DATE_FORMAT( Card.time,'%Y-%m') == mesic).\
+    form = db.session.query( User.card_number.label('card_number'),User.full_name.label('fullname'),func.DATE_FORMAT( CardEntries.time,'%Y-%m').label("time"),\
+                             func.DATE_FORMAT( CardEntries.time,'%Y').label("year"),func.DATE_FORMAT( CardEntries.time,'%m').label("month")).\
+        join(CardEntries,User.card_number==CardEntries.card_number).group_by(func.DATE_FORMAT( CardEntries.time,'%Y-%m'),User.full_name).\
+        filter(func.DATE_FORMAT( CardEntries.time,'%Y-%m') == mesic).\
         order_by(User.full_name).all()
 
     #form = db.session.query( User.card_number.label('card_number'),User.full_name.label('fullname'),func.strftime('%Y-%m', Card.time).label("time"),\
@@ -216,7 +216,7 @@ def vypisy():
 
     #form=Card.find_by_number(current_user.card_number)
     #form = db.session.query(Card.time).filter_by(card_number=current_user.card_number)
-    form = db.session.query( func.DATE_FORMAT( Card.time,'%Y-%m').label("time"),func.DATE_FORMAT( Card.time,'%Y').label("year"),func.DATE_FORMAT( Card.time,'%m').label("month")).filter_by(card_number=current_user.card_number).group_by(func.DATE_FORMAT( Card.time,'%Y-%m'))
+    form = db.session.query( func.DATE_FORMAT( CardEntries.time,'%Y-%m').label("time"),func.DATE_FORMAT( CardEntries.time,'%Y').label("year"),func.DATE_FORMAT( CardEntries.time,'%m').label("month")).filter_by(card_number=current_user.card_number).group_by(func.DATE_FORMAT( CardEntries.time,'%Y-%m'))
         #.group_by([func.day(Card.time)])
 
     return render_template("auth/vypisy.tmpl", form=form, data=current_user.card_number,user=current_user)
@@ -227,9 +227,9 @@ def mesicni_vypis_alluser(mesic):
 
     #form=Card.find_by_number(current_user.card_number)
     #form = db.session.query(Card.time).filter_by(card_number=current_user.card_number)
-    form = db.session.query( func.strftime('%Y-%m-%d', Card.time).label("date"),func.max(func.strftime('%H:%M', Card.time)).label("Max"),\
-                             func.min(func.strftime('%H:%M', Card.time)).label("Min"),( func.max(Card.time) - func.min(Card.time)).label("Rozdil"))\
-        .filter(func.strftime('%Y-%-m', Card.time) == mesic).group_by(func.strftime('%Y-%m-%d', Card.time))
+    form = db.session.query( func.strftime('%Y-%m-%d', CardEntries.time).label("date"),func.max(func.strftime('%H:%M', CardEntries.time)).label("Max"),\
+                             func.min(func.strftime('%H:%M', CardEntries.time)).label("Min"),( func.max(CardEntries.time) - func.min(CardEntries.time)).label("Rozdil"))\
+        .filter(func.strftime('%Y-%-m', CardEntries.time) == mesic).group_by(func.strftime('%Y-%m-%d', CardEntries.time))
         #.group_by([func.day(Card.time)])
     return render_template("auth/mesicni_vypisy.tmpl", form=form,user=current_user)
 
@@ -240,9 +240,9 @@ def mesicni_vypis(mesic):
 
     #form=Card.find_by_number(current_user.card_number)
     #form = db.session.query(Card.time).filter_by(card_number=current_user.card_number)
-    form = db.session.query( func.strftime('%Y-%m-%d', Card.time).label("date"),func.max(func.strftime('%H:%M', Card.time)).label("Max"),\
-                             func.min(func.strftime('%H:%M', Card.time)).label("Min"),( func.max(Card.time) - func.min(Card.time)).label("Rozdil"))\
-        .filter((func.strftime('%Y-%-m', Card.time) == mesic) and (Card.card_number == current_user.card_number)).group_by(func.strftime('%Y-%m-%d', Card.time))
+    form = db.session.query( func.strftime('%Y-%m-%d', CardEntries.time).label("date"),func.max(func.strftime('%H:%M', CardEntries.time)).label("Max"),\
+                             func.min(func.strftime('%H:%M', CardEntries.time)).label("Min"),( func.max(CardEntries.time) - func.min(CardEntries.time)).label("Rozdil"))\
+        .filter((func.strftime('%Y-%-m', CardEntries.time) == mesic) and (CardEntries.card_number == current_user.card_number)).group_by(func.strftime('%Y-%m-%d', CardEntries.time))
         #.group_by([func.day(Card.time)])
     return render_template("auth/mesicni_vypisy.tmpl", form=form,user=current_user)
 
@@ -260,9 +260,9 @@ class DictSerializable(object):
 def tbl_insdata(od , do ):
     #data = db.session.query( func.strftime('%Y-%m', Card.time).label("time")).filter_by(card_number=current_user.card_number).group_by(func.strftime('%Y-%m', Card.time))
     if od==0 and do == 0 :
-        data=db.session.query(Card.id,Card.card_number,func.strftime('%Y-%m', Card.time).label("time")).all()
+        data=db.session.query(CardEntries.id,CardEntries.card_number,func.strftime('%Y-%m', CardEntries.time).label("time")).all()
     else:
-        data=db.session.query(Card.id,Card.card_number,func.strftime('%Y-%m', Card.time).label("time")).slice(od,do)
+        data=db.session.query(CardEntries.id,CardEntries.card_number,func.strftime('%Y-%m', CardEntries.time).label("time")).slice(od,do)
     pole=['id','time','card_number']
     result = [{col: getattr(d, col) for col in pole} for d in data]
     return jsonify(data = result)
@@ -317,10 +317,10 @@ def pole_calendar(card_number,year,month):
       #                   .filter(Card.card_number == card_number).group_by(func.strftime('%Y-%m-%d', Card.time)))
 
 
-    hodnota = list(db.session.query( extract('day', Card.time).label("den")\
-                        ,func.min(func.DATE_FORMAT( Card.time,'%H:%i')).label("Min")\
-                        ,func.max(func.DATE_FORMAT( Card.time,'%H:%i')).label("Max"))\
-                        .filter(extract('month', Card.time) == month  ) .filter(extract('year', Card.time) == year  ).filter(Card.card_number==card_number).group_by(func.DATE_FORMAT( Card.time,'%Y-%m-%d')))
+    hodnota = list(db.session.query( extract('day', CardEntries.time).label("den")\
+                        ,func.min(func.DATE_FORMAT( CardEntries.time,'%H:%i')).label("Min")\
+                        ,func.max(func.DATE_FORMAT( CardEntries.time,'%H:%i')).label("Max"))\
+                        .filter(extract('month', CardEntries.time) == month  ) .filter(extract('year', CardEntries.time) == year  ).filter(CardEntries.card_number==card_number).group_by(func.DATE_FORMAT( CardEntries.time,'%Y-%m-%d')))
             #.filter(datetime(Card.time).month == mounth  ))
     for day in xrange(1,lastday):
         d = {}
@@ -379,16 +379,16 @@ def calendar_edit(card_number,year,mounth,day):
     form.den = str(day)  + '-' +  str(mounth)  +  '-' + str(year)
     form.card_number = str (card_number)
     if form.validate_on_submit():
-        delday=db.session.query(Card).filter(extract('month', Card.time) == mounth  ) .filter(extract('year', Card.time) == year  ).filter(extract('day', Card.time) == day  ).filter(Card.card_number==card_number)
+        delday=db.session.query(CardEntries).filter(extract('month', CardEntries.time) == mounth  ) .filter(extract('year', CardEntries.time) == year  ).filter(extract('day', CardEntries.time) == day  ).filter(CardEntries.card_number==card_number)
         for item in delday:
             db.session.delete(item)
         time1=str(day)  + '-' +  str(mounth)  +  '-' + str(year)+' '+ str(form.data['startdate'])
         cas= datetime.strptime(time1, "%d-%m-%Y %H:%M:%S")
-        i=Card(card_number=card_number,time=cas)
+        i=CardEntries(card_number=card_number,time=cas)
         db.session.add(i)
         time1=str(day)  + '-' +  str(mounth)  +  '-' + str(year)+' '+ str(form.data['enddate'])
         cas= datetime.strptime(time1, "%d-%m-%Y %H:%M:%S")
-        i=Card(card_number=card_number,time=cas)
+        i=CardEntries(card_number=card_number,time=cas)
         db.session.add(i)
         db.session.commit()
         flash("Saved successfully", "info")
@@ -472,10 +472,10 @@ def newmonth():
 @login_required
 def createmonth(month):
     datum=datetime.strptime(month + '-1',"%Y-%m-%d")
-    users=db.session.query(User).filter(Card.card_number <> '').all()
+    users=db.session.query(User).filter(CardEntries.card_number <> '').all()
     for user in users:
-        if not list(db.session.query(Card).filter(Card.card_number == user.card_number).filter(func.DATE_FORMAT( Card.time,'%H:%M') == month)):
-            i=Card(card_number=user.card_number,time=datum)
+        if not list(db.session.query(CardEntries).filter(CardEntries.card_number == user.card_number).filter(func.DATE_FORMAT( CardEntries.time,'%H:%M') == month)):
+            i=CardEntries(card_number=user.card_number,time=datum)
             db.session.add(i)
     db.session.commit()
     flash("Mesic vytvoren", "info")
