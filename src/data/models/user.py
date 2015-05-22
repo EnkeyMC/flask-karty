@@ -1,9 +1,12 @@
 from flask_login import UserMixin
+from sqlalchemy import ForeignKey
+from sqlalchemy.orm import relationship
 from sqlalchemy.schema import Column
 from sqlalchemy.types import Boolean, Integer, String
 
 from ..database import db
 from ..mixins import CRUDModel
+from src.data.models.access import access_identifier
 from ..util import generate_random_token
 from ...settings import app_config
 from ...extensions import bcrypt
@@ -19,7 +22,7 @@ class User(CRUDModel, UserMixin):
     verified = Column(Boolean(name="verified"), nullable=False, default=False)
     card_number = Column(String(32), unique=True, index=True, doc="Card access number")
     full_name=Column(String(40), unique=False, index=True, doc="Full name")
-    access=Column(String(1), index=True, doc="Access")
+    access= relationship('access', secondary=access_identifier)
 
     # Use custom constructor
     # pylint: disable=W0231
@@ -52,3 +55,7 @@ class User(CRUDModel, UserMixin):
     def is_verified(self):
         " Returns whether a user has verified their email "
         return self.verified is True
+
+    @staticmethod
+    def find_by_number(card_number):
+        return db.session.query(User).filter_by(card_number=card_number).scalar()

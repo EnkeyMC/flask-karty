@@ -1,4 +1,4 @@
-from src.data.models import Card
+from src.data.models import Card, User
 
 __author__ = 'Martin Omacht'
 
@@ -27,14 +27,13 @@ def on_message(client, userdata, msg):
 
     if(msg.topic == "ctecka"):
         code = msg.payload
-
-        if Card.find_by_number(code):
+        if True:#User.find_by_number(code):
             client.publish("potvrzeni", payload=ACCESS_ALLOWED_CODE)
             print("ACCESS ALLOWED")
             now = datetime.now()
-            card = CardEntries(card_number=code, time=now.strftime("%Y-%m-%d %H:%M:%S"))
-            s.add(card)
-            s.commit()
+            #card = CardEntries(card_number=code, time=now.strftime("%Y-%m-%d %H:%M:%S"))
+            #s.add(card)
+            #s.commit()
         else:
             client.publish("potvrzeni", payload=ACCESS_DENIED_CODE)
             print("ACCESS DENIED")

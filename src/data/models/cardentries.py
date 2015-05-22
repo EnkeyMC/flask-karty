@@ -9,7 +9,7 @@ class CardEntries(CRUDModel):
     __public__ = ['id', 'card_number', 'time']
 
     id = Column(Integer, primary_key=True)
-    card_number = Column(String(32), ForeignKey("card.card_number"), nullable=False,  index=True, doc="Card access number")
+    card_number = Column(String(32), ForeignKey("users.card_number"), nullable=False,  index=True, doc="Card access number")
     time = Column(DateTime)
     id_card_reader = Column(Integer)
         # Use custom constructor
