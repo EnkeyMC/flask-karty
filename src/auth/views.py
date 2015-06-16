@@ -1,34 +1,37 @@
-#import  os
+# import  os
 from flask import (Blueprint, escape, flash, render_template,
-                   redirect, request, url_for,jsonify)
+                   redirect, request, url_for, jsonify)
 from flask_login import current_user, login_required, login_user, logout_user
 #from werkzeug.utils import secure_filename
-from sqlalchemy import func,asc,Date,cast,extract
-from sqlalchemy.types import DateTime
-from .forms import ResetPasswordForm, EmailForm, LoginForm, RegistrationForm,EditUserForm,username_is_available,email_is_available,Editdate,\
-    MonthInsert,FileUploadForm
+from sqlalchemy import func, extract
+from .forms import ResetPasswordForm, EmailForm, LoginForm, RegistrationForm, EditUserForm, username_is_available, \
+    email_is_available, Editdate, \
+    MonthInsert, FileUploadForm, GroupForm
 from ..data.database import db
-from ..data.models import User, UserPasswordToken,CardEntries
+from ..data.models import User, UserPasswordToken, CardEntries
 from ..data.util import generate_random_token
-from ..decorators import reset_token_required
 from ..emails import send_activation, send_password_reset
 from ..extensions import login_manager
-from datetime import datetime,timedelta
+from datetime import datetime, timedelta
 from .xmlparse import mujxmlparse
+from ..decorators import access_control, reset_token_required
+
+
 def last_day_of_month(year, month):
-        """ Work out the last day of the month """
-        last_days = [31, 30, 29, 28, 27]
-        for i in last_days:
-                try:
-                        end = datetime(year, month, i)
-                except ValueError:
-                        continue
-                else:
-                        return end.day
-        return None
+    """ Work out the last day of the month """
+    last_days = [31, 30, 29, 28, 27]
+    for i in last_days:
+        try:
+            end = datetime(year, month, i)
+        except ValueError:
+            continue
+        else:
+            return end.day
+    return None
 
 
 blueprint = Blueprint('auth', __name__)
+
 
 @blueprint.route('/activate', methods=['GET'])
 def activate():
@@ -48,6 +51,7 @@ def activate():
 
     return redirect(url_for('public.index'))
 
+
 @blueprint.route('/forgot_password', methods=['GET', 'POST'])
 def forgot_password():
     form = EmailForm()
@@ -61,12 +65,14 @@ def forgot_password():
             return redirect(url_for("public.index"))
         else:
             flash("We couldn't find an account with that email. Please try again", 'warning')
-    return render_template("auth/forgot_password.tmpl", form=form,user=current_user)
+    return render_template("auth/forgot_password.tmpl", form=form, user=current_user)
+
 
 @login_manager.user_loader
 def load_user(userid):  # pylint: disable=W0612
     "Register callback for loading users from session"
     return db.session.query(User).get(int(userid))
+
 
 @blueprint.route('/login', methods=['GET', 'POST'])
 def login():
@@ -79,7 +85,8 @@ def login():
             return redirect(request.args.get('next') or url_for('public.index'))
         else:
             flash("Invalid email/password combination", "danger")
-    return render_template("auth/login.tmpl", form=form,user=current_user)
+    return render_template("auth/login.tmpl", form=form, user=current_user)
+
 
 @blueprint.route('/logout', methods=['GET'])
 @login_required
@@ -87,6 +94,7 @@ def logout():
     logout_user()
     flash("Logged out successfully", "info")
     return redirect(url_for('public.index'))
+
 
 @blueprint.route('/register', methods=['GET', 'POST'])
 def register():
@@ -97,7 +105,7 @@ def register():
         send_activation(new_user)
         flash("Thanks for signing up {}. Welcome!".format(escape(new_user.username)), 'info')
         return redirect(url_for('public.index'))
-    return render_template("auth/register.tmpl", form=form,user=current_user)
+    return render_template("auth/register.tmpl", form=form, user=current_user)
 
 
 @blueprint.route('/resend_activation_email', methods=['GET'])
@@ -112,6 +120,7 @@ def resend_activation_email():
 
     return redirect(url_for('public.index'))
 
+
 @blueprint.route('/reset_password', methods=['GET', 'POST'])
 @reset_token_required
 def reset_password(userid, user_token):
@@ -122,62 +131,65 @@ def reset_password(userid, user_token):
         user_token.update(used=True)
         flash("Password updated! Please log in to your account", "info")
         return redirect(url_for('public.index'))
-    return render_template("auth/reset_password.tmpl", form=form,user=current_user)
+    return render_template("auth/reset_password.tmpl", form=form, user=current_user)
+
+
 @blueprint.route('/account', methods=['GET', 'POST'])
-@login_required
+@access_control
 def account():
-    user = db.session.query(User).get(current_user.id)
-    form = EditUserForm(obj = user)
-    if current_user.access== "B" or current_user.access == 'U':
-       form.access.choices=[('U', 'User')]
-       card=form.card_number.data
+    user = current_user.id
+    form = EditUserForm(obj=user)
+    if current_user.has_access("access_changing"):
+        card = form.card_number.data
     if form.validate_on_submit():
-        if form.username.data <> current_user.username :
+        if form.username.data <> current_user.username:
             if not username_is_available(form.username.data):
                 flash("Username is not allowed use another", "warning")
-                return render_template("auth/editAccountAdmin.tmpl", form=form,user=current_user)
+                return render_template("auth/editAccountAdmin.tmpl", form=form, user=current_user)
         if form.email.data <> current_user.email:
             if not email_is_available(form.email.data):
                 flash("Email is used use another email", "warning")
-                return render_template("auth/editAccountAdmin.tmpl", form=form,user=current_user)
-        if current_user.access <> "A":
+                return render_template("auth/editAccountAdmin.tmpl", form=form, user=current_user)
+        if current_user.has_access("access_changing"):
             form.card_number.data = card
         new_user = user.update(**form.data)
         login_user(new_user)
         flash("Saved successfully", "info")
         return redirect(request.args.get('next') or url_for('public.index'))
 
-    return render_template("auth/editAccountAdmin.tmpl", form=form,user=current_user)
+    return render_template("auth/editAccountAdmin.tmpl", form=form, user=current_user)
 
 
-
-@blueprint.route('/vypisy_vyber', methods=['GET','POST'])
+@blueprint.route('/vypisy_vyber', methods=['GET', 'POST'])
 @login_required
 def mesicni_vypis_vyber():
     form = MonthInsert()
     if form.validate_on_submit():
-        return redirect('/sestava_vsichni/'+ form.month.data)
-    return render_template('auth/recreatemonth.tmpl' , form = form , user = current_user)
+        return redirect('/sestava_vsichni/' + form.month.data)
+    return render_template('auth/recreatemonth.tmpl', form=form, user=current_user)
 
 
 @blueprint.route('/sestava_vsichni/<string:mesic>', methods=['GET'])
 @login_required
 def sestava_vsichni(mesic):
-    form = db.session.query( User.card_number.label('card_number'),User.full_name.label('fullname'),func.DATE_FORMAT( CardEntries.time,'%Y-%m').label("time"),\
-                             func.DATE_FORMAT( CardEntries.time,'%Y').label("year"),func.DATE_FORMAT( CardEntries.time,'%m').label("month")).\
-        join(CardEntries,User.card_number==CardEntries.card_number).group_by(func.DATE_FORMAT( CardEntries.time,'%Y-%m'),User.full_name).\
-        filter(func.DATE_FORMAT( CardEntries.time,'%Y-%m') == mesic).\
+    form = db.session.query(User.card_number.label('card_number'), User.full_name.label('fullname'),
+                            func.DATE_FORMAT(CardEntries.time, '%Y-%m').label("time"), \
+                            func.DATE_FORMAT(CardEntries.time, '%Y').label("year"),
+                            func.DATE_FORMAT(CardEntries.time, '%m').label("month")). \
+        join(CardEntries, User.card_number == CardEntries.card_number).group_by(
+        func.DATE_FORMAT(CardEntries.time, '%Y-%m'), User.full_name). \
+        filter(func.DATE_FORMAT(CardEntries.time, '%Y-%m') == mesic). \
         order_by(User.full_name).all()
-    poledat=[]
+    poledat = []
     for u in form:
-        prom=pole_calendar(int(u[0]),int(u[3]),int(u[4]))
+        prom = pole_calendar(int(u[0]), int(u[3]), int(u[4]))
         poledat.append(prom)
-#    print poledat
+    #    print poledat
     if len(form) == 0:
-        flash("No data",category="info")
+        flash("No data", category="info")
         return redirect(url_for("auth.mesicni_vypis_vyber"))
     else:
-        return render_template("auth/sestava_vsichni.tmpl",data = poledat, form=form ,user=current_user)
+        return render_template("auth/sestava_vsichni.tmpl", data=poledat, form=form, user=current_user)
 
 
 @blueprint.route('/vypisy_vsichni/<string:mesic>', methods=['GET'])
@@ -188,10 +200,13 @@ def vypisy_vsichni(mesic):
     #    join(Card,User.card_number==Card.card_number).group_by(func.strftime('%Y-%m', Card.time),User.full_name).\
     #    filter(func.strftime('%Y-%m', Card.time) == mesic).\
     #    order_by(User.full_name).all()
-    form = db.session.query( User.card_number.label('card_number'),User.full_name.label('fullname'),func.DATE_FORMAT( CardEntries.time,'%Y-%m').label("time"),\
-                             func.DATE_FORMAT( CardEntries.time,'%Y').label("year"),func.DATE_FORMAT( CardEntries.time,'%m').label("month")).\
-        join(CardEntries,User.card_number==CardEntries.card_number).group_by(func.DATE_FORMAT( CardEntries.time,'%Y-%m'),User.full_name).\
-        filter(func.DATE_FORMAT( CardEntries.time,'%Y-%m') == mesic).\
+    form = db.session.query(User.card_number.label('card_number'), User.full_name.label('fullname'),
+                            func.DATE_FORMAT(CardEntries.time, '%Y-%m').label("time"), \
+                            func.DATE_FORMAT(CardEntries.time, '%Y').label("year"),
+                            func.DATE_FORMAT(CardEntries.time, '%m').label("month")). \
+        join(CardEntries, User.card_number == CardEntries.card_number).group_by(
+        func.DATE_FORMAT(CardEntries.time, '%Y-%m'), User.full_name). \
+        filter(func.DATE_FORMAT(CardEntries.time, '%Y-%m') == mesic). \
         order_by(User.full_name).all()
 
     #form = db.session.query( User.card_number.label('card_number'),User.full_name.label('fullname'),func.strftime('%Y-%m', Card.time).label("time"),\
@@ -202,52 +217,61 @@ def vypisy_vsichni(mesic):
     #    order_by(User.full_name).all()
     #for a in form:
     #    print form.index(a)
-    stravenka=[]
+    stravenka = []
     for u in form:
-        data=pole_calendar(int(u[0]),int(u[3]),int(u[4]))
-        stravenka.append([u[0],data['stravenka']])
+        data = pole_calendar(int(u[0]), int(u[3]), int(u[4]))
+        stravenka.append([u[0], data['stravenka']])
 
-    return render_template("auth/vypisy_vsichni.tmpl",stravenka = stravenka, form=form ,user=current_user)
+    return render_template("auth/vypisy_vsichni.tmpl", stravenka=stravenka, form=form, user=current_user)
 
 
 @blueprint.route('/vypisy', methods=['GET'])
-@login_required
+@access_control
 def vypisy():
-
     #form=Card.find_by_number(current_user.card_number)
     #form = db.session.query(Card.time).filter_by(card_number=current_user.card_number)
-    form = db.session.query( func.DATE_FORMAT( CardEntries.time,'%Y-%m').label("time"),func.DATE_FORMAT( CardEntries.time,'%Y').label("year"),func.DATE_FORMAT( CardEntries.time,'%m').label("month")).filter_by(card_number=current_user.card_number).group_by(func.DATE_FORMAT( CardEntries.time,'%Y-%m'))
-        #.group_by([func.day(Card.time)])
+    form = db.session.query(func.DATE_FORMAT(CardEntries.time, '%Y-%m').label("time"),
+                            func.DATE_FORMAT(CardEntries.time, '%Y').label("year"),
+                            func.DATE_FORMAT(CardEntries.time, '%m').label("month")).filter_by(
+        card_number=current_user.card_number).group_by(func.DATE_FORMAT(CardEntries.time, '%Y-%m'))
+    #.group_by([func.day(Card.time)])
 
-    return render_template("auth/vypisy.tmpl", form=form, data=current_user.card_number,user=current_user)
+    return render_template("auth/vypisy.tmpl", form=form, data=current_user.card_number, user=current_user)
+
 
 @blueprint.route('/mesicni_vypis_vsichni/<string:mesic>', methods=['GET'])
 @login_required
 def mesicni_vypis_alluser(mesic):
-
     #form=Card.find_by_number(current_user.card_number)
     #form = db.session.query(Card.time).filter_by(card_number=current_user.card_number)
-    form = db.session.query( func.strftime('%Y-%m-%d', CardEntries.time).label("date"),func.max(func.strftime('%H:%M', CardEntries.time)).label("Max"),\
-                             func.min(func.strftime('%H:%M', CardEntries.time)).label("Min"),( func.max(CardEntries.time) - func.min(CardEntries.time)).label("Rozdil"))\
-        .filter(func.strftime('%Y-%-m', CardEntries.time) == mesic).group_by(func.strftime('%Y-%m-%d', CardEntries.time))
-        #.group_by([func.day(Card.time)])
-    return render_template("auth/mesicni_vypisy.tmpl", form=form,user=current_user)
+    form = db.session.query(func.strftime('%Y-%m-%d', CardEntries.time).label("date"),
+                            func.max(func.strftime('%H:%M', CardEntries.time)).label("Max"), \
+                            func.min(func.strftime('%H:%M', CardEntries.time)).label("Min"),
+                            ( func.max(CardEntries.time) - func.min(CardEntries.time)).label("Rozdil")) \
+        .filter(func.strftime('%Y-%-m', CardEntries.time) == mesic).group_by(
+        func.strftime('%Y-%m-%d', CardEntries.time))
+    #.group_by([func.day(Card.time)])
+    return render_template("auth/mesicni_vypisy.tmpl", form=form, user=current_user)
 
 
 @blueprint.route('/mesicni_vypis/<string:mesic>', methods=['GET'])
 @login_required
 def mesicni_vypis(mesic):
-
     #form=Card.find_by_number(current_user.card_number)
     #form = db.session.query(Card.time).filter_by(card_number=current_user.card_number)
-    form = db.session.query( func.strftime('%Y-%m-%d', CardEntries.time).label("date"),func.max(func.strftime('%H:%M', CardEntries.time)).label("Max"),\
-                             func.min(func.strftime('%H:%M', CardEntries.time)).label("Min"),( func.max(CardEntries.time) - func.min(CardEntries.time)).label("Rozdil"))\
-        .filter((func.strftime('%Y-%-m', CardEntries.time) == mesic) and (CardEntries.card_number == current_user.card_number)).group_by(func.strftime('%Y-%m-%d', CardEntries.time))
-        #.group_by([func.day(Card.time)])
-    return render_template("auth/mesicni_vypisy.tmpl", form=form,user=current_user)
+    form = db.session.query(func.strftime('%Y-%m-%d', CardEntries.time).label("date"),
+                            func.max(func.strftime('%H:%M', CardEntries.time)).label("Max"), \
+                            func.min(func.strftime('%H:%M', CardEntries.time)).label("Min"),
+                            ( func.max(CardEntries.time) - func.min(CardEntries.time)).label("Rozdil")) \
+        .filter((func.strftime('%Y-%-m', CardEntries.time) == mesic) and (
+        CardEntries.card_number == current_user.card_number)).group_by(func.strftime('%Y-%m-%d', CardEntries.time))
+    #.group_by([func.day(Card.time)])
+    return render_template("auth/mesicni_vypisy.tmpl", form=form, user=current_user)
 
 
 from collections import OrderedDict
+
+
 class DictSerializable(object):
     def _asdict(self):
         result = OrderedDict()
@@ -255,39 +279,41 @@ class DictSerializable(object):
             result[key] = getattr(self, key)
         return result
 
+
 @blueprint.route('/tbl_isdata/<int:od>/<int:do>', methods=['GET'])
 @login_required
-def tbl_insdata(od , do ):
+def tbl_insdata(od, do):
     #data = db.session.query( func.strftime('%Y-%m', Card.time).label("time")).filter_by(card_number=current_user.card_number).group_by(func.strftime('%Y-%m', Card.time))
-    if od==0 and do == 0 :
-        data=db.session.query(CardEntries.id,CardEntries.card_number,func.strftime('%Y-%m', CardEntries.time).label("time")).all()
+    if od == 0 and do == 0:
+        data = db.session.query(CardEntries.id, CardEntries.card_number,
+                                func.strftime('%Y-%m', CardEntries.time).label("time")).all()
     else:
-        data=db.session.query(CardEntries.id,CardEntries.card_number,func.strftime('%Y-%m', CardEntries.time).label("time")).slice(od,do)
-    pole=['id','time','card_number']
+        data = db.session.query(CardEntries.id, CardEntries.card_number,
+                                func.strftime('%Y-%m', CardEntries.time).label("time")).slice(od, do)
+    pole = ['id', 'time', 'card_number']
     result = [{col: getattr(d, col) for col in pole} for d in data]
-    return jsonify(data = result)
-
-
+    return jsonify(data=result)
 
 
 @blueprint.route('/tabletest', methods=['GET'])
 @login_required
 def tabletest():
-    return render_template('public/table.tmpl',user=current_user)
+    return render_template('public/table.tmpl', user=current_user)
+
 
 @blueprint.route('/caljsonr/<int:card_number>/<int:year>/<int:mount>', methods=['GET'])
 @login_required
-def caljson_edit(card_number,year,mount):
-    lastday = last_day_of_month(year , mount)
-    data=[]
-    startdate='8:00'
-    enddate='16:00'
-    for day in xrange(1,lastday):
+def caljson_edit(card_number, year, mount):
+    lastday = last_day_of_month(year, mount)
+    data = []
+    startdate = '8:00'
+    enddate = '16:00'
+    for day in xrange(1, lastday):
         d = {}
-        d['card_number']=card_number
-        d['day']=day
-        d['startdate']=startdate
-        d['enddate']=enddate
+        d['card_number'] = card_number
+        d['day'] = day
+        d['startdate'] = startdate
+        d['enddate'] = enddate
         data.append(d)
     #print json.dumps(data, separators=(',',':'))
 
@@ -301,132 +327,141 @@ def caljson_edit(card_number,year,mount):
     return jsonify(data=data)
 
 
-def pole_calendar(card_number,year,month):
-    lastday = last_day_of_month(year , month)
-    datarow=[]
-    data={}
-    startdate='0:00'
-    enddate='0:00'
-    data['stravenka']=0
+def pole_calendar(card_number, year, month):
+    lastday = last_day_of_month(year, month)
+    datarow = []
+    data = {}
+    startdate = '0:00'
+    enddate = '0:00'
+    data['stravenka'] = 0
     #hodnota = list(db.session.query( func.strftime('%d', Card.time).label("den"),func.max(func.strftime('%H:%M', Card.time)).label("Max"),\
     #                         func.min(func.strftime('%H:%M', Card.time)).label("Min"))\
     #                        .filter(func.date(Card.time) == fromdate.date()).filter(Card.card_number == card_number).group_by(func.date(Card.time)))
-    ff= datetime(year, month, 1).strftime('%Y-%m-%d')
+    ff = datetime(year, month, 1).strftime('%Y-%m-%d')
     #hodnota = list(db.session.query( func.strftime('%d', Card.time).label("den"),func.max(func.strftime('%H:%M', Card.time)).label("Max"),\
-     #                        func.min(func.strftime('%H:%M', Card.time)).label("Min"))\
-      #                   .filter(Card.card_number == card_number).group_by(func.strftime('%Y-%m-%d', Card.time)))
+    #                        func.min(func.strftime('%H:%M', Card.time)).label("Min"))\
+    #                   .filter(Card.card_number == card_number).group_by(func.strftime('%Y-%m-%d', Card.time)))
 
 
-    hodnota = list(db.session.query( extract('day', CardEntries.time).label("den")\
-                        ,func.min(func.DATE_FORMAT( CardEntries.time,'%H:%i')).label("Min")\
-                        ,func.max(func.DATE_FORMAT( CardEntries.time,'%H:%i')).label("Max"))\
-                        .filter(extract('month', CardEntries.time) == month  ) .filter(extract('year', CardEntries.time) == year  ).filter(CardEntries.card_number==card_number).group_by(func.DATE_FORMAT( CardEntries.time,'%Y-%m-%d')))
-            #.filter(datetime(Card.time).month == mounth  ))
-    for day in xrange(1,lastday):
+    hodnota = list(db.session.query(extract('day', CardEntries.time).label("den") \
+                                    , func.min(func.DATE_FORMAT(CardEntries.time, '%H:%i')).label("Min") \
+                                    , func.max(func.DATE_FORMAT(CardEntries.time, '%H:%i')).label("Max")) \
+                   .filter(extract('month', CardEntries.time) == month).filter(
+        extract('year', CardEntries.time) == year).filter(CardEntries.card_number == card_number).group_by(
+        func.DATE_FORMAT(CardEntries.time, '%Y-%m-%d')))
+    #.filter(datetime(Card.time).month == mounth  ))
+    for day in xrange(1, lastday):
         d = {}
-        d['day']=day
-        d['dow']= datetime(year, month, day).weekday()
-        datafromdb=filter(lambda x: x[0] == day, hodnota)
+        d['day'] = day
+        d['dow'] = datetime(year, month, day).weekday()
+        datafromdb = filter(lambda x: x[0] == day, hodnota)
         if d['dow'] > 4:
-            d['startdate']=''
-            d['enddate']=''
+            d['startdate'] = ''
+            d['enddate'] = ''
         else:
-            fromdate=datetime(year, month, day)
-            todate=datetime(year, month, day) + timedelta(days=1)
+            fromdate = datetime(year, month, day)
+            todate = datetime(year, month, day) + timedelta(days=1)
 
             #hodnota = db.session.query( func.min(func.strftime('%H:%M', Card.time)).label("Min")).filter(Card.time >= fromdate).filter(Card.time < todate).filter(Card.card_number == card_number)
             #hodnota = list(db.session.query(func.date(Card.time).label('xxx')).filter(func.date(Card.time) == fromdate.date() ).filter(Card.card_number == card_number).all())
             #.filter(cast(Card.time,Date) == fromdate.date())
             #hodnota = list(db.session.query( func.strftime('%d', Card.time).label("den"),func.max(func.strftime('%H:%M', Card.time)).label("Max"),\
-             #                func.min(func.strftime('%H:%M', Card.time)).label("Min"))\
-             #               .filter(func.date(Card.time) == fromdate.date()).filter(Card.card_number == card_number).group_by(func.date(Card.time)))
-                           #.group_by(func.strftime('%Y-%m-%d', Card.time)))
-#            if len(hodnota) > 0 :
- #               print len(hodnota)
+            #                func.min(func.strftime('%H:%M', Card.time)).label("Min"))\
+            #               .filter(func.date(Card.time) == fromdate.date()).filter(Card.card_number == card_number).group_by(func.date(Card.time)))
+            #.group_by(func.strftime('%Y-%m-%d', Card.time)))
+            #            if len(hodnota) > 0 :
+            #               print len(hodnota)
 
-            d['startdate']=startdate
-            d['enddate']=enddate
-            if datafromdb :
-                d['startdate']=datafromdb[0][1]
-                d['enddate']=datafromdb[0][2]
-            rozdil=datetime.strptime(d['enddate'],"%H:%M")-datetime.strptime(d['startdate'],"%H:%M")
-            d['timespend']=round(rozdil.total_seconds() / 3600,2)
+            d['startdate'] = startdate
+            d['enddate'] = enddate
+            if datafromdb:
+                d['startdate'] = datafromdb[0][1]
+                d['enddate'] = datafromdb[0][2]
+            rozdil = datetime.strptime(d['enddate'], "%H:%M") - datetime.strptime(d['startdate'], "%H:%M")
+            d['timespend'] = round(rozdil.total_seconds() / 3600, 2)
             if d['timespend'] >= 3:
                 d['dost'] = 0
                 data['stravenka'] = data['stravenka'] + 1
             else:
                 d['dost'] = 1
         datarow.append(d)
-    data['user']=''
-    data['lastday']=lastday
-    data['mounth']=month
-    data['year']=year
-    data['card_number']=card_number
-    data['data']=datarow
+    data['user'] = ''
+    data['lastday'] = lastday
+    data['mounth'] = month
+    data['year'] = year
+    data['card_number'] = card_number
+    data['data'] = datarow
 
     return data
 
+
 @blueprint.route('/calendar/<int:card_number>/<int:year>/<int:month>', methods=['GET'])
 @login_required
-def calendar(card_number,year,month):
-    data = pole_calendar(card_number,year,month)
-    return render_template('auth/mesicni_vypis.tmpl',data=data,user=current_user)
+def calendar(card_number, year, month):
+    data = pole_calendar(card_number, year, month)
+    return render_template('auth/mesicni_vypis.tmpl', data=data, user=current_user)
 
-@blueprint.route('/calendar_edit/<int:card_number>/<int:year>/<int:mounth>/<int:day>', methods=['GET','POST'])
+
+@blueprint.route('/calendar_edit/<int:card_number>/<int:year>/<int:mounth>/<int:day>', methods=['GET', 'POST'])
 @login_required
-def calendar_edit(card_number,year,mounth,day):
+def calendar_edit(card_number, year, mounth, day):
     form = Editdate()
-    form.den = str(day)  + '-' +  str(mounth)  +  '-' + str(year)
-    form.card_number = str (card_number)
+    form.den = str(day) + '-' + str(mounth) + '-' + str(year)
+    form.card_number = str(card_number)
     if form.validate_on_submit():
-        delday=db.session.query(CardEntries).filter(extract('month', CardEntries.time) == mounth  ) .filter(extract('year', CardEntries.time) == year  ).filter(extract('day', CardEntries.time) == day  ).filter(CardEntries.card_number==card_number)
+        delday = db.session.query(CardEntries).filter(extract('month', CardEntries.time) == mounth).filter(
+            extract('year', CardEntries.time) == year).filter(extract('day', CardEntries.time) == day).filter(
+            CardEntries.card_number == card_number)
         for item in delday:
             db.session.delete(item)
-        time1=str(day)  + '-' +  str(mounth)  +  '-' + str(year)+' '+ str(form.data['startdate'])
-        cas= datetime.strptime(time1, "%d-%m-%Y %H:%M:%S")
-        i=CardEntries(card_number=card_number,time=cas)
+        time1 = str(day) + '-' + str(mounth) + '-' + str(year) + ' ' + str(form.data['startdate'])
+        cas = datetime.strptime(time1, "%d-%m-%Y %H:%M:%S")
+        i = CardEntries(card_number=card_number, time=cas)
         db.session.add(i)
-        time1=str(day)  + '-' +  str(mounth)  +  '-' + str(year)+' '+ str(form.data['enddate'])
-        cas= datetime.strptime(time1, "%d-%m-%Y %H:%M:%S")
-        i=CardEntries(card_number=card_number,time=cas)
+        time1 = str(day) + '-' + str(mounth) + '-' + str(year) + ' ' + str(form.data['enddate'])
+        cas = datetime.strptime(time1, "%d-%m-%Y %H:%M:%S")
+        i = CardEntries(card_number=card_number, time=cas)
         db.session.add(i)
         db.session.commit()
         flash("Saved successfully", "info")
-        return redirect('calendar/'+str (card_number)+'/'+str(year)+'/'+str(mounth))
-    return render_template('auth/editdate.tmpl', form=form,user=current_user)
+        return redirect('calendar/' + str(card_number) + '/' + str(year) + '/' + str(mounth))
+    return render_template('auth/editdate.tmpl', form=form, user=current_user)
+
 
 @blueprint.route('/user_list', methods=['GET'])
 @login_required
 def user_list():
-    if current_user.access== "A" or current_user.access== "B":
+    if current_user.access == "A" or current_user.access == "B":
         data = list(db.session.query(User).all())
-        return render_template('auth/user_list.tmpl',data=data,user=current_user)
+        return render_template('auth/user_list.tmpl', data=data, user=current_user)
     else:
         flash("Access deny", "warn")
         return redirect('/')
 
-@blueprint.route('/user_edit/<int:id>', methods=['GET','POST'])
+
+@blueprint.route('/user_edit/<int:id>', methods=['GET', 'POST'])
 @login_required
 def user_edit(id):
     #if current_user.email== "admin@iservery.com":
     user = db.session.query(User).get(id)
-    if current_user.access <> 'A'and user.access=='A':
+    if current_user.access <> 'A' and user.access == 'A':
         flash("Edit not allowed", "info")
         return redirect(request.args.get('next') or url_for('auth.user_list'))
-    form = EditUserForm(obj = user)
-    if current_user.access== "B":
-       form.access.choices=[('U', 'User')]
+    form = EditUserForm(obj=user)
+    if current_user.access == "B":
+        form.groups.choices = [('U', 'User')]
     if form.validate_on_submit():
         new_user = user.update(**form.data)
         flash("Saved successfully", "info")
         return redirect(request.args.get('next') or url_for('auth.user_list'))
-    return render_template("auth/editAccountAdmin.tmpl", form=form,user=current_user)
+    return render_template("auth/editAccountAdmin.tmpl", form=form, user=current_user)
 
-@blueprint.route('/user_del/<int:id>', methods=['GET','POST'])
+
+@blueprint.route('/user_del/<int:id>', methods=['GET', 'POST'])
 @login_required
 def user_del(id):
-    user=db.session.query(User).filter_by(id = id).first()
-    if current_user.access <> 'A'and user.access=='A':
+    user = db.session.query(User).filter_by(id=id).first()
+    if current_user.access <> 'A' and user.access == 'A':
         flash("remove not allowed", "info")
         return redirect(request.args.get('next') or url_for('auth.user_list'))
     db.session.delete(user)
@@ -435,51 +470,54 @@ def user_del(id):
     return redirect(request.args.get('next') or url_for('auth.user_list'))
 
 
-
-@blueprint.route('/user_add/', methods=['GET','POST'])
+@blueprint.route('/user_add/', methods=['GET', 'POST'])
 @login_required
 def user_add():
-    if current_user.access== "A" or current_user.access== "B":
+    if current_user.access == "A" or current_user.access == "B":
         form = EditUserForm()
-        if current_user.access== "B":
-            form.access.choices=[('U', 'User')]
+        if current_user.access == "B":
+            form.groups.choices = [('U', 'User')]
         if form.validate_on_submit():
             if not username_is_available(form.username.data):
-                    flash("Username is not allowed use another", "warning")
-                    return render_template("auth/editAccountAdmin.tmpl", form=form,user=current_user)
+                flash("Username is not allowed use another", "warning")
+                return render_template("auth/editAccountAdmin.tmpl", form=form, user=current_user)
             if not email_is_available(form.email.data):
-                    flash("Email is used use another email", "warning")
-                    return render_template("auth/editAccountAdmin.tmpl", form=form,user=current_user)
+                flash("Email is used use another email", "warning")
+                return render_template("auth/editAccountAdmin.tmpl", form=form, user=current_user)
 
             new_user = User.create(**form.data)
             flash("Saved successfully", "info")
             return redirect(request.args.get('next') or url_for('auth.user_list'))
 
-        return render_template("auth/editAccountAdmin.tmpl", form=form,user=current_user)
+        return render_template("auth/editAccountAdmin.tmpl", form=form, user=current_user)
     else:
-            flash("Access Deny", "warn")
-            return redirect(request.args.get('next') or url_for('public.index'))
+        flash("Access Deny", "warn")
+        return redirect(request.args.get('next') or url_for('public.index'))
 
-@blueprint.route('/newmonth', methods=['GET','POST'])
+
+@blueprint.route('/newmonth', methods=['GET', 'POST'])
 @login_required
 def newmonth():
     form = MonthInsert()
     if form.validate_on_submit():
-        return redirect('/recreatemonth/'+ form.month.data)
-    return render_template('auth/recreatemonth.tmpl' , form = form , user = current_user)
+        return redirect('/recreatemonth/' + form.month.data)
+    return render_template('auth/recreatemonth.tmpl', form=form, user=current_user)
+
 
 @blueprint.route('/recreatemonth/<string:month>', methods=['GET'])
 @login_required
 def createmonth(month):
-    datum=datetime.strptime(month + '-1',"%Y-%m-%d")
-    users=db.session.query(User).filter(CardEntries.card_number <> '').all()
+    datum = datetime.strptime(month + '-1', "%Y-%m-%d")
+    users = db.session.query(User).filter(CardEntries.card_number <> '').all()
     for user in users:
-        if not list(db.session.query(CardEntries).filter(CardEntries.card_number == user.card_number).filter(func.DATE_FORMAT( CardEntries.time,'%H:%M') == month)):
-            i=CardEntries(card_number=user.card_number,time=datum)
+        if not list(db.session.query(CardEntries).filter(CardEntries.card_number == user.card_number).filter(
+                        func.DATE_FORMAT(CardEntries.time, '%H:%M') == month)):
+            i = CardEntries(card_number=user.card_number, time=datum)
             db.session.add(i)
     db.session.commit()
     flash("Mesic vytvoren", "info")
     return redirect(request.args.get('next') or url_for('public.index'))
+
 
 @blueprint.route('/upload', methods=['GET', 'POST'])
 @login_required
@@ -491,6 +529,12 @@ def upload():
         #file_path = os.path.join('./src/uploads/', filename)
         #open(file_path, 'w').write(data)
         if mujxmlparse(data):
-            flash('Data nahrana',category='info')
-    return render_template("auth/fileupload.tmpl", form = form , user = current_user )
+            flash('Data nahrana', category='info')
+    return render_template("auth/fileupload.tmpl", form=form, user=current_user)
+
+@blueprint.route('/add_group', methods=['GET', 'POST'])
+@login_required
+def add_group():
+    form = GroupForm();
+    return render_template("auth/groupform.tmpl", form=form, user=current_user, title="Add group")
 

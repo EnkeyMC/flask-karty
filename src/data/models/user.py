@@ -6,7 +6,8 @@ from sqlalchemy.types import Boolean, Integer, String
 
 from ..database import db
 from ..mixins import CRUDModel
-from src.data.models.access import access_identifier
+from src.data.models.group import user_has_group, Group
+from src.data.models.page import Page
 from ..util import generate_random_token
 from ...settings import app_config
 from ...extensions import bcrypt
@@ -21,14 +22,13 @@ class User(CRUDModel, UserMixin):
     username = Column(String(64), nullable=False, unique=True, index=True, doc="The user's username.")
     verified = Column(Boolean(name="verified"), nullable=False, default=False)
     card_number = Column(String(32), unique=True, index=True, doc="Card access number")
-    full_name=Column(String(40), unique=False, index=True, doc="Full name")
-    access= relationship('access', secondary=access_identifier)
+    full_name = Column(String(40), unique=False, index=True, doc="Full name")
+    group = relationship('Group', secondary=user_has_group, backref='user')
 
     # Use custom constructor
     # pylint: disable=W0231
     def __init__(self, **kwargs):
         self.activate_token = generate_random_token()
-        self.access='U'
         for k, v in kwargs.iteritems():
             setattr(self, k, v)
 
@@ -59,3 +59,18 @@ class User(CRUDModel, UserMixin):
     @staticmethod
     def find_by_number(card_number):
         return db.session.query(User).filter_by(card_number=card_number).scalar()
+
+    def has_access(self, func_name):
+        try:
+            allowed_groups = db.session.query(Page).get(func_name).groups
+        except AttributeError as e:
+            print "[ERROR] This page is not in database."
+            print e.message
+            return False
+
+        for g in self.group:
+            if filter(lambda x: x.id == g.id, allowed_groups):
+                return True
+            elif g.group_name == 'superadmin':
+                return True
+        return False

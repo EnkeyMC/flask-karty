@@ -3,13 +3,13 @@ import re
 from datetime import datetime,date
 
 from flask_wtf import Form
-from wtforms.fields import BooleanField, TextField, PasswordField,SelectField,FieldList
+from wtforms.fields import SelectMultipleField, BooleanField, TextField, PasswordField,SelectField,FieldList
 from flask_wtf.file import FileField
 from wtforms_components  import TimeField
 from wtforms import validators
 from wtforms.validators import EqualTo, Email, InputRequired, Length,regexp
 
-from ..data.models import User
+from ..data.models import User, Group
 from ..fields import Predicate
 
 def email_is_available(email):
@@ -103,7 +103,8 @@ class EditUserForm(Form):
 
         InputRequired(message="You can't leave this empty")
     ])
-    access=SelectField('Access',choices=[('A', 'SuperAdmin'), ('B', 'Admin'), ('U', 'User')])
+
+    groups = SelectMultipleField('Groups', choices=Group.getGroupList())
 
 class Editdate(Form):
     #startdate = TimeField('Datum prichodu')
@@ -131,3 +132,13 @@ class FileUploadForm(Form):
     def validate_image(form, field):
         if field.data:
             field.data = re.sub(r'[^a-z0-9_.-]', '_', field.data)
+
+class GroupForm(Form):
+    group_name = TextField('Group name', validators=[
+        Predicate(safe_characters, message="Please use only letters (a-z) and numbers"),
+        Length(min=6, max=30, message="Please use between 6 and 30 characters"),
+        InputRequired(message="You can't leave this empty")
+    ])
+
+    access_time_from = TimeField('From')
+    access_time_to = TimeField('To')
